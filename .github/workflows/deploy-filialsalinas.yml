@@ -1,0 +1,33 @@
+name: Deploy filialsalinas (Locaweb)
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'public_html/filialsalinas/**'
+      - '.github/workflows/deploy-filialsalinas.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy-filialsalinas:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Deploy para Locaweb - filialsalinas
+        uses: locaweb/ftp-deploy@1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          user: ${{ secrets.USER }}
+          password: ${{ secrets.PASS }}
+
+          # Pasta local do sistema filialsalinas dentro do repo
+          localDir: "public_html/filialsalinas"
+
+          # Pasta remota correspondente no FTP
+          remoteDir: ${{ secrets.REMOTE_DIR_FILIAL }}
+
+          forceSsl: true
+          options: "--exclude-glob .git* --exclude-glob .github"
