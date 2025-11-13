@@ -35,7 +35,7 @@
             <div>
                 <img style="padding: 10px;" src="<?php echo base_url() ?>../assets/images/logo.png">
             </div>
-            <h3>Bem-vindo(a)!</h3>
+            <h3>Bem-vindo(a) Salinas!</h3>
             <p>Informe seus dados para obter acesso ao gerenciador de conteúdo..
                 <!--Continually expanded and constantly improved Inspinia Admin Them (IN+)-->
             </p>
