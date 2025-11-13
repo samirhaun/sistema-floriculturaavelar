@@ -16,6 +16,14 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
+      # DEBUG: ver se os secrets estão chegando
+      - name: Debug secrets filialsalinas
+        run: |
+          echo "HOST: ${{ secrets.HOST != '' && 'OK' || 'VAZIO' }}"
+          echo "USER: ${{ secrets.USER != '' && 'OK' || 'VAZIO' }}"
+          echo "PASS: ${{ secrets.PASS != '' && 'OK' || 'VAZIO' }}"
+          echo "REMOTE_DIR_FILIAL: ${{ secrets.REMOTE_DIR_FILIAL != '' && 'OK' || 'VAZIO' }}"
+
       - name: Deploy para Locaweb - filialsalinas
         uses: locaweb/ftp-deploy@1.0.0
         with:
