@@ -1,0 +1,16 @@
+.select2-container .select2-selection--single, .select2-container--default .select2-selection--multiple {
+	height: 34px;
+	border-radius: 0px;
+  overflow-y: auto;
+}
+
+.select2-container--default .select2-results__option[aria-selected=true] {
+  background-color: #1ab394;
+  color: white;
+  border-bottom: 1px solid white;
+}
+
+/*.select2-container .select2-search--inline, .select2-container .select2-search--inline input{
+  width: 100% !important;
+}
+*/
