@@ -16,7 +16,6 @@ jobs:
       - name: Checkout do código
         uses: actions/checkout@v4
 
-      # DEBUG: ver se os secrets estão chegando
       - name: Debug secrets filialsalinas
         run: |
           echo "HOST: ${{ secrets.HOST != '' && 'OK' || 'VAZIO' }}"
@@ -24,18 +23,15 @@ jobs:
           echo "PASS: ${{ secrets.PASS != '' && 'OK' || 'VAZIO' }}"
           echo "REMOTE_DIR_FILIAL: ${{ secrets.REMOTE_DIR_FILIAL != '' && 'OK' || 'VAZIO' }}"
 
-      - name: Deploy para Locaweb - filialsalinas
+      - name: Deploy para Locaweb (FILIAL)
         uses: locaweb/ftp-deploy@1.0.0
         with:
           host: ${{ secrets.HOST }}
           user: ${{ secrets.USER }}
           password: ${{ secrets.PASS }}
 
-          # Pasta local do sistema filialsalinas dentro do repo
           localDir: "public_html/filialsalinas"
-
-          # Pasta remota correspondente no FTP
           remoteDir: ${{ secrets.REMOTE_DIR_FILIAL }}
 
           forceSsl: true
-          options: "--exclude-glob .git* --exclude-glob .github"
+          options: "--exclude-glob .git* --exclude-glob .github --exclude-glob vendor --exclude-glob uploads"
