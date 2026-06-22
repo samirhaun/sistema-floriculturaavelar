@@ -92,9 +92,49 @@
 <body>
 
     <div id="wrapper">
+        <?php
+            $contextos_usuario = array();
+            $usuario_logado = $this->session->userdata('usuario');
+            if($usuario_logado){
+                $auth = $this->load->database('auth', TRUE);
+                $auth_user_id = isset($usuario_logado->auth_id) ? $usuario_logado->auth_id : null;
+
+                if(!$auth_user_id && !empty($usuario_logado->cpf)){
+                    $cpf_normalizado = preg_replace('/[^0-9]/', '', $usuario_logado->cpf);
+                    $auth_user = $auth->select('id')->from('usuarios')
+                        ->where("(cpf = ".$auth->escape($usuario_logado->cpf)." OR REPLACE(REPLACE(cpf, '.', ''), '-', '') = ".$auth->escape($cpf_normalizado).")", null, false)
+                        ->get()->row();
+                    $auth_user_id = $auth_user ? $auth_user->id : null;
+                }
+
+                if($auth_user_id){
+                    $rows_contextos = $auth->select('contexto')->from('usuarios_contextos')
+                        ->where('usuarios_id', $auth_user_id)
+                        ->where('status', 1)
+                        ->get()->result();
+                    foreach($rows_contextos as $row_contexto){
+                        $contextos_usuario[] = trim($row_contexto->contexto);
+                    }
+                    $usuario_logado->contextos = $contextos_usuario;
+                    $usuario_logado->auth_id = $auth_user_id;
+                    $this->session->set_userdata('usuario', $usuario_logado);
+                }
+            }
+        ?>
         <nav class="navbar-default navbar-static-side" role="navigation">
             <div class="sidebar-collapse">
                 <ul class="nav metismenu" id="side-menu">
+                    <li>
+                        <a href="#"><i class="fa fa-exchange"></i> <span class="nav-label">Filial: Montes Claros</span><span class="fa arrow"></span></a>
+                        <ul class="nav nav-second-level">
+                            <?php if(in_array('producao', $contextos_usuario)): ?>
+                                <li class="active"><a href="/producao/admin/">Montes Claros</a></li>
+                            <?php endif; ?>
+                            <?php if(in_array('salinas', $contextos_usuario)): ?>
+                                <li><a href="/filialsalinas/">Salinas</a></li>
+                            <?php endif; ?>
+                        </ul>
+                    </li>
                     
                     <?php /*<li id="site">
                         <a href="#"><i class="fa fa-globe"></i> <span class="nav-label">Conteúdo portal</span><span class="fa arrow"></span></a>
@@ -159,6 +199,10 @@
 
                             <?php if(check_habilidade('visualizar_contas_pagar')): ?>
                             <li id="Loja-contas_pagar"><a href="<?php echo base_url(array('loja', 'contas_pagar')) ?>">Contas a pagar</a></li>
+                            <?php endif; ?>
+
+                            <?php if(check_habilidade('visualizar_contas_pagar') || check_habilidade('visualizar_plano_contas')): ?>
+                            <li id="Loja-maquininhas_cartao"><a href="<?php echo base_url(array('loja', 'maquininhas-cartao')) ?>">Maquininhas</a></li>
                             <?php endif; ?>
 
                             
@@ -274,6 +318,14 @@
                     <li id="site">
                         <a href="#"><i class="fa fa-files-o"></i> <span class="nav-label">Relatórios</span><span class="fa arrow"></span></a>
                         <ul class="nav nav-second-level">
+
+                            <?php if(check_habilidade('relatorios_fluxo_caixa_pedidos')): ?>
+                            <li id="loja-relatorio-pendencias"><a href="<?php echo base_url(array('loja', 'relatorio-pendencias')) ?>">Pendências</a></li>
+                            <?php endif; ?>
+
+                            <?php if(check_habilidade('relatorios_fluxo_caixa_pedidos')): ?>
+                            <li id="loja-relatorio-vendas"><a href="<?php echo base_url(array('loja', 'relatorio-vendas')) ?>">Vendas</a></li>
+                            <?php endif; ?>
 
                             <?php if(check_habilidade('relatorios_fluxo_caixa_pedidos')): ?>
                             <li id="loja-demonstrativo-novo"><a href="<?php echo base_url(array('loja', 'demonstrativo-novo')) ?>">Fluxo de caixa</a></li>
@@ -406,6 +458,19 @@
                     <ul class="nav navbar-top-links navbar-right">
                         <li>
                             <span class="m-r-sm text-muted welcome-message"><strong>Bem-vindo</strong> <?php echo $this->auth->get_nome_usuario() ?></span>
+                        </li>
+                        <li class="dropdown">
+                            <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+                                <i class="fa fa-exchange"></i> Filial: Montes Claros <span class="caret"></span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-user">
+                                <?php if(in_array('producao', $contextos_usuario)): ?>
+                                    <li><a href="/producao/admin/"><i class="fa fa-check"></i> Montes Claros</a></li>
+                                <?php endif; ?>
+                                <?php if(in_array('salinas', $contextos_usuario)): ?>
+                                    <li><a href="/filialsalinas/" target="_blank"><i class="fa fa-external-link"></i> Abrir Salinas</a></li>
+                                <?php endif; ?>
+                            </ul>
                         </li>
                         <!-- <li class="dropdown">
                             <a class="dropdown-toggle count-info" data-toggle="dropdown" href="#">

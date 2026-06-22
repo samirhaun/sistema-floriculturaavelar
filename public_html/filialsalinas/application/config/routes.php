@@ -73,6 +73,13 @@ $route['loja/salvar-contas_pagar']                     = "Loja_contas_pagar/salv
 $route['loja/editar-contas_pagar']                     = "Loja_contas_pagar/editar";
 $route['loja/excluir-contas_pagar']                    = "Loja_contas_pagar/excluir";
 
+/*maquininhas de cartao */
+$route['loja/maquininhas-cartao']                       = "Loja_maquininhas_cartao/lista";
+$route['loja/nova-maquininha-cartao']                   = "Loja_maquininhas_cartao/novo";
+$route['loja/salvar-maquininha-cartao']                 = "Loja_maquininhas_cartao/salvar";
+$route['loja/editar-maquininha-cartao']                 = "Loja_maquininhas_cartao/editar";
+$route['loja/excluir-maquininha-cartao']                = "Loja_maquininhas_cartao/excluir";
+
 
 /*eventos */
 $route['loja/eventos']                           = "Loja_eventos/lista";
@@ -354,6 +361,12 @@ $route['loja/buscar-pedidos-relatorios']                   = "Loja_demonstrativo
 
 $route['loja/demonstrativo-novo']                          = "Loja_demonstrativo/demonstrativo_novo";
 $route['loja/buscar-pedidos-relatorios-novo']                   = "Loja_demonstrativo/demonstrativo_buscar_novo";
+
+$route['loja/relatorio-vendas']                            = "Loja_relatorio_vendas/index";
+$route['loja/relatorio-vendas/buscar']                     = "Loja_relatorio_vendas/buscar";
+
+$route['loja/relatorio-pendencias']                        = "Loja_relatorio_pendencias/index";
+$route['loja/relatorio-pendencias/buscar']                 = "Loja_relatorio_pendencias/buscar";
 
 
 //-->projetos de lei

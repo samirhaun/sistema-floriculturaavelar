@@ -65,6 +65,33 @@
                                 </div>
                             </div>
 
+                            <?php
+                                if(isset($usuario)){
+                                    $CI =& get_instance();
+                                    $contextos_usuario = $CI->usuarios_model->get_contextos_usuario($usuario->id);
+                                }
+                                $contextos_usuario = isset($contextos_usuario) ? array_map('trim', $contextos_usuario) : array();
+                                $tem_producao = in_array('producao', $contextos_usuario, true);
+                                $tem_salinas = in_array('salinas', $contextos_usuario, true);
+                            ?>
+                            <div class="col-sm-6 col-xs-12">
+                                <div class="form-group">
+                                    <label class="control-label">Acesso aos sistemas:</label>
+                                    <div class="checkbox checkbox-primary">
+                                        <input id="contexto-producao" type="checkbox" name="contextos[]" value="producao" data-contexto="producao" <?php echo $tem_producao ? 'checked="checked"' : '' ?>>
+                                        <label for="contexto-producao">
+                                            Montes Claros
+                                        </label>
+                                    </div>
+                                    <div class="checkbox checkbox-primary">
+                                        <input id="contexto-salinas" type="checkbox" name="contextos[]" value="salinas" data-contexto="salinas" <?php echo $tem_salinas ? 'checked="checked"' : '' ?>>
+                                        <label for="contexto-salinas">
+                                            Salinas
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
 
                         <div class="hr-line-dashed"></div>
@@ -94,6 +121,21 @@
      $('input[name="cpf"]').mask('000.000.000-00', {reverse: true});
 
 var teste;
+    var contextosUsuarioBanco = <?php echo json_encode($contextos_usuario); ?>;
+    function aplicaContextosUsuarioBanco(){
+        var inputsContexto = document.querySelectorAll('input[data-contexto]');
+        inputsContexto.forEach(function(input){
+            var deveMarcar = contextosUsuarioBanco.indexOf(input.getAttribute('data-contexto')) !== -1;
+            input.checked = deveMarcar;
+            input.defaultChecked = deveMarcar;
+            if (window.jQuery && $.fn.iCheck) {
+                $(input).iCheck(deveMarcar ? 'check' : 'uncheck');
+            }
+        });
+    }
+    aplicaContextosUsuarioBanco();
+    $(aplicaContextosUsuarioBanco);
+    setTimeout(aplicaContextosUsuarioBanco, 300);
     $('input[type="text"]').setMask();
     $("#form-cadastro-categoria").validate({});
 

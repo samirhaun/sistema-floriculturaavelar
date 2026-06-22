@@ -16,10 +16,16 @@ class Admin extends TEC_Controller {
     }
 
     public function index(){
+        if($this->session->userdata('usuario')){
+            redirect(base_url('home'),'refresh');
+        }
         $this->login();
     }
 
     public function login(){
+        if($this->session->userdata('usuario')){
+            redirect(base_url('home'),'refresh');
+        }
         $data = array();
         if($this->input->get('error'))
             $data['error'] = TRUE;

@@ -9,6 +9,7 @@ class Site_pedidos extends TEC_Controller {
     $this->load->model('loja/produtos_model');
     $this->load->model('loja/usuarios_model');
     $this->load->model('loja/clientes_model');
+    $this->load->model('loja/maquininhas_cartao_model');
     $this->load->model('site/fotos_pedidos_model');
     $this->load->helper('form');
     $this->load->helper('text');
@@ -169,6 +170,9 @@ function novo_pedido(){
 
   $data['eventos'] = $this->produtos_model->get_eventos();
 
+  $data['maquininhas_cartao'] = $this->maquininhas_cartao_model->get_ativas();
+  $data['maquininhas_cartao_taxas'] = $this->maquininhas_cartao_model->get_taxas_ativas();
+
   //dados usuario
   $data['usuario'] = $this->pedidos_model->get_info_usuario_logado();
 
@@ -228,7 +232,30 @@ function salvar_pedido(){
     /* SALVANDO NOVO CLIENTE CASO TENHA */
     if($this->input->post('clientes_id') == 'novo'):
 
-      $dados = array(
+    // VALIDAÇÃO DESCONTO MÁXIMO (%)
+    $desconto_valor = (float) str_replace(',', '.', $this->input->post('valor_desconto'));
+    $tipo_desconto = $this->input->post('tipo_desconto');
+    $valor_base = (float) str_replace(',', '.', $this->input->post('valor'));
+    $valor_frete_val = (float) str_replace(',', '.', $this->input->post('valor_frete'));
+    
+    if($tipo_desconto == 'porcentagem'){
+      $pct_aplicado = $desconto_valor;
+    } else {
+      $pct_aplicado = ($valor_base + $valor_frete_val) > 0 ? ($desconto_valor / ($valor_base + $valor_frete_val)) * 100 : 0;
+    }
+
+    $usuario_logado = $this->pedidos_model->get_info_usuario_logado();
+    $desconto_maximo = (float) $usuario_logado->desconto_maximo;
+
+    if($desconto_maximo > 0 && $pct_aplicado > $desconto_maximo){
+      $response['type'] = 'error';
+      $response['title'] = 'Desconto não permitido';
+      $response['message'] = number_format($pct_aplicado, 1) . '% excede o limite de ' . number_format($desconto_maximo, 0) . '% do seu usuário.';
+      echo json_encode($response);
+      exit;
+    }
+
+    $dados = array(
         'origem' => 2,
         'nome' => $this->input->post('nome_cliente_new'),
         'email' => $this->input->post('email_cliente_new'),
@@ -388,6 +415,10 @@ if($id_pedido = $this->pedidos_model->salvar_pedido($dados, $id))
         $dados_receita['plano_contas_id'] = 33;
         $dados_receita['pedidos_id'] = $id_pedido;
         $dados_receita['forma_pgto'] = ($this->input->post('forma_pgto_receita')[$key]) ? $this->input->post('forma_pgto_receita')[$key] : null;
+        $maquininhas = $this->input->post('maquininha_cartao_id_receita');
+        $dados_receita['maquininha_cartao_id'] = (isset($maquininhas[$key]) && $maquininhas[$key]) ? $maquininhas[$key] : null;
+        $taxas_maquininhas = $this->input->post('maquininha_taxa_id_receita');
+        $dados_receita['maquininha_taxa_id'] = (isset($taxas_maquininhas[$key]) && $taxas_maquininhas[$key]) ? $taxas_maquininhas[$key] : null;
       
         array_push($receitas, $dados_receita);
 
@@ -617,6 +648,9 @@ public function editar_pedido()
     $dados['vendedores'] = $this->produtos_model->get_vendedores();
   
     $dados['eventos'] = $this->produtos_model->get_eventos();
+
+    $dados['maquininhas_cartao'] = $this->maquininhas_cartao_model->get_ativas();
+    $dados['maquininhas_cartao_taxas'] = $this->maquininhas_cartao_model->get_taxas_ativas();
 
 
     $dados['enderecos'] =  $this->clientes_model->get_enderecos_vinculados_por_pedido($this->input->get('id'));

@@ -18,7 +18,7 @@ class TEC_Controller extends CI_Controller {
     {
         $data['active_menu'] = $this->active_menu;
         $this->load->view('includes/header', $data);
-        $this->load->view($paginaConteudo);
+        $this->load->view($paginaConteudo, $data);
         $this->load->view('includes/footer');
     }
 }

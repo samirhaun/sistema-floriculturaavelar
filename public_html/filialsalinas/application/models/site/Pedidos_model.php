@@ -210,15 +210,123 @@ class Pedidos_model extends CI_Model {
     }
 
     public function salvar_contas_receber($dados, $pedido_id = null){
-        if($pedido_id){
+        if(!$pedido_id){
+            return false;
+        }
 
-            $this->db->where('pedidos_id', $pedido_id);
-            $result = $this->db->delete('contas_receber');
+        $this->db->trans_start();
 
-            if($result){
-                return  $this->db->insert_batch('contas_receber', $dados);
+        $contas_atuais = $this->db->select('id')
+            ->from('contas_receber')
+            ->where('pedidos_id', $pedido_id)
+            ->get()->result();
+
+        if(!empty($contas_atuais)){
+            $ids_contas = array();
+            foreach($contas_atuais as $conta_atual){
+                $ids_contas[] = $conta_atual->id;
             }
 
+            $this->db->where_in('contas_receber_id', $ids_contas);
+            $this->db->where('origem', 'taxa_maquininha');
+            $this->db->delete('contas_pagar');
+        }
+
+        $this->db->where('pedidos_id', $pedido_id);
+        $this->db->delete('contas_receber');
+
+        if(!empty($dados)){
+            foreach($dados as $receita){
+                $this->db->insert('contas_receber', $receita);
+                $conta_receber_id = $this->db->insert_id();
+                $taxa_conta_id = $this->criar_conta_taxa_maquininha($receita, $conta_receber_id, $pedido_id);
+
+                if($taxa_conta_id){
+                    $this->db->where('id', $conta_receber_id);
+                    $this->db->update('contas_receber', array('taxa_contas_pagar_id' => $taxa_conta_id));
+                }
+            }
+        }
+
+        $this->db->trans_complete();
+        return $this->db->trans_status();
+    }
+
+    private function criar_conta_taxa_maquininha($receita, $conta_receber_id, $pedido_id)
+    {
+        if((empty($receita['maquininha_cartao_id']) && empty($receita['maquininha_taxa_id'])) || !in_array((int) $receita['forma_pgto'], array(2, 3, 4, 5, 6))){
+            return null;
+        }
+
+        $taxa_bandeira = null;
+        if(!empty($receita['maquininha_taxa_id'])){
+            $taxa_bandeira = $this->db->select('*')
+                ->from('maquininhas_cartao_taxas')
+                ->where('id', $receita['maquininha_taxa_id'])
+                ->where('ativo', 1)
+                ->where('deleted_at IS NULL', null, false)
+                ->get()->row();
+
+            if($taxa_bandeira){
+                $receita['maquininha_cartao_id'] = $taxa_bandeira->maquininha_cartao_id;
+            }
+        }
+
+        $maquininha = $this->db->select('*')
+            ->from('maquininhas_cartao')
+            ->where('id', $receita['maquininha_cartao_id'])
+            ->where('ativo', 1)
+            ->where('deleted_at IS NULL', null, false)
+            ->get()->row();
+
+        if(!$maquininha){
+            return null;
+        }
+
+        $campo_taxa = $this->campo_taxa_maquininha($receita['forma_pgto']);
+        $origem_taxa = $taxa_bandeira ? $taxa_bandeira : $maquininha;
+        $percentual = isset($origem_taxa->{$campo_taxa}) ? (float) $origem_taxa->{$campo_taxa} : 0;
+        $valor_receita = (float) $receita['valor'];
+        $valor_taxa = round(($valor_receita * $percentual) / 100, 2);
+
+        if($valor_taxa <= 0){
+            return null;
+        }
+
+        $data_vencimento = !empty($receita['data_pago']) ? $receita['data_pago'] : $receita['data_vencimento'];
+
+        $conta_pagar = array(
+            'descricao' => 'Taxa maquininha '.$maquininha->nome.($taxa_bandeira ? ' - '.$taxa_bandeira->grupo_bandeira : '').' - pedido #'.$pedido_id,
+            'data_vencimento' => $data_vencimento,
+            'valor' => $valor_taxa,
+            'status' => ((int) $receita['status'] === 1) ? 1 : 0,
+            'data_pago' => ((int) $receita['status'] === 1) ? $data_vencimento : null,
+            'plano_contas_id' => $maquininha->plano_contas_taxa_id,
+            'fornecedores_id' => $maquininha->fornecedor_id,
+            'forma_pgto' => null,
+            'contas_receber_id' => $conta_receber_id,
+            'origem' => 'taxa_maquininha',
+        );
+
+        $this->db->insert('contas_pagar', $conta_pagar);
+        return $this->db->insert_id();
+    }
+
+    private function campo_taxa_maquininha($forma_pgto)
+    {
+        switch ((int) $forma_pgto) {
+            case 2:
+                return 'taxa_debito';
+            case 3:
+                return 'taxa_credito_1x';
+            case 4:
+                return 'taxa_credito_2x';
+            case 5:
+                return 'taxa_credito_3x';
+            case 6:
+                return 'taxa_credito_4x';
+            default:
+                return 'taxa_debito';
         }
     }
 

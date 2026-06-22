@@ -206,6 +206,7 @@
               </div>
               
               <button class="btn btn-primary" type="submit"><i class="fa fa-search"></i>&nbsp;&nbsp; Pesquisar</button>
+              <input type="hidden" name="page" id="page_input" value="1">
             </form>
           </div>
         </div>
@@ -280,8 +281,79 @@
   }
 
 
-  function limpa_filtros_profissionais(){
+   function limpa_filtros_profissionais(){
     $('.select-profissionais').val('').trigger('change');
   }
+
+  // Paginação via AJAX (Analítico)
+  $('#tabela_resultados').on('click', '.btn-paginate', function(e){
+    e.preventDefault();
+    var page = $(this).data('page');
+    var $btn = $(this);
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+
+    var activeTab = $('#tabela_resultados').find('.nav-tabs li.active a').attr('href') || '#tab-analitico';
+
+    var formData = $('#form-faturamento').serializeArray();
+    formData = formData.filter(function(item){ return item.name !== 'page'; });
+    formData.push({name: 'page', value: page});
+
+    doAjaxPagination(formData, activeTab, $btn);
+  });
+
+  // Paginação via AJAX (Lançamentos sub-tabs)
+  $('#tabela_resultados').on('click', '.btn-sub-paginate', function(e){
+    e.preventDefault();
+    var page = $(this).data('page');
+    var table = $(this).data('table');
+    var $btn = $(this);
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+
+    var formData = $('#form-faturamento').serializeArray();
+    formData = formData.filter(function(item){ return item.name !== 'page' && item.name !== 'page_receitas' && item.name !== 'page_despesas'; });
+    formData.push({name: 'page', value: 1});
+    formData.push({name: 'page_receitas', value: ($('#sub-rec').hasClass('active') ? page : ($('#page_receitas_val').val() || 1))});
+    formData.push({name: 'page_despesas', value: ($('#sub-desp').hasClass('active') ? page : ($('#page_despesas_val').val() || 1))});
+    formData.push({name: table, value: page});
+
+    doAjaxPagination(formData, '#tab-lancamentos', $btn);
+  });
+
+  function doAjaxPagination(formData, activeTab, $btn){
+    $.ajax({
+      url: $('#form-faturamento').attr('action'),
+      type: 'POST',
+      data: formData,
+      dataType: 'json',
+      success: function(response){
+        if(response.html){
+          var $temp = $('<div>').html(response.html);
+          var inner = $temp.find('#tabela_resultados').html();
+          $('#tabela_resultados').html(inner);
+          if(activeTab) $('#tabela_resultados').find('.nav-tabs a[href="' + activeTab + '"]').tab('show');
+          $('html, body').animate({ scrollTop: $('#tabela_resultados').offset().top - 80 }, 300);
+        }
+      },
+      error: function(){ swal('Erro', 'Erro ao trocar de página.', 'error'); },
+      complete: function(){ $btn.prop('disabled', false); }
+    });
+  }
+
+  // Accordion categorias
+  $('#tabela_resultados').on('click', '.cat-toggle', function(){
+    var $target = $($(this).data('target'));
+    var $chevron = $(this).find('.cat-chevron');
+    $target.toggle();
+    $chevron.toggleClass('fa-chevron-right fa-chevron-down');
+  });
+
+  // Árvore plano de conta
+  $('#tabela_resultados').on('click', '.tree-toggle', function(e){
+    e.stopPropagation();
+    var $target = $($(this).data('target'));
+    var $chevron = $(this).find('.tree-chevron');
+    $target.slideToggle(150);
+    $chevron.toggleClass('fa-chevron-right fa-chevron-down');
+  });
 
 </script>

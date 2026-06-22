@@ -6,7 +6,7 @@
                 <a href="#">Loja</a>
             </li>
             <li>
-                <a href="<?php echo base_url(array('loja', 'plano_contas')) ?>">plano de contas</a>
+                <a href="<?php echo base_url(array('loja', 'plano_contas')) ?>">Plano de contas</a>
             </li>
             <li class="active">
                 <strong><?php echo (isset($dados)) ? 'Editar cadastro de plano de conta' : 'Novo cadastro de plano de conta' ?></strong>
@@ -16,6 +16,7 @@
     <div class="col-lg-2">
     </div>
 </div>
+
 <div class="wrapper wrapper-content animated">
     <div class="row">
         <div class="col-lg-12">
@@ -25,27 +26,68 @@
                         <?php if (isset($dados)): ?>
                             <input type="hidden" name="id" value="<?php echo $dados->id ?>">
                         <?php endif ?>
+
                         <div class="hr-line-dashed"></div>
+
                         <div class="row">
-                            <div class="col-sm-9 col-xs-12">
+                            <div class="col-sm-8 col-xs-12">
                                 <div class="form-group">
-                                    <label class="control-label">Descrição: *</label>
+                                    <label class="control-label">Descricao: *</label>
                                     <input type="text" name="descricao" class="form-control" value="<?php echo (isset($dados)) ? $dados->descricao : '' ?>" required>
                                 </div>
                             </div>
 
-                            <div class="col-sm-3 col-xs-12">
+                            <div class="col-sm-4 col-xs-12">
                                 <div class="form-group">
-                                    <label class="control-label">Cod:</label>
+                                    <label class="control-label">Codigo:</label>
                                     <input type="text" name="cod" class="form-control" value="<?php echo (isset($dados)) ? $dados->cod : '' ?>">
                                 </div>
                             </div>
+                        </div>
 
-                           
+                        <div class="row">
+                            <div class="col-sm-8 col-xs-12">
+                                <div class="form-group">
+                                    <label class="control-label">Conta pai:</label>
+                                    <select class="form-control" name="plano_conta_id">
+                                        <option value="">Sem conta pai</option>
+                                        <?php if (!empty($planos_pai)): ?>
+                                            <?php foreach ($planos_pai as $plano): ?>
+                                                <?php
+                                                    $selected = (isset($dados) && (int) $dados->plano_conta_id === (int) $plano->id) ? 'selected' : '';
+                                                    $prefixo = str_repeat('&nbsp;&nbsp;&nbsp;', isset($plano->nivel) ? $plano->nivel : 0);
+                                                ?>
+                                                <option <?php echo $selected; ?> value="<?php echo $plano->id; ?>">
+                                                    <?php echo $prefixo; ?><?php echo $plano->cod ? $plano->cod . ' - ' : ''; ?><?php echo $plano->descricao; ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-sm-2 col-xs-6">
+                                <div class="form-group">
+                                    <label class="control-label">Lancamento:</label>
+                                    <div class="checkbox checkbox-primary">
+                                        <input id="lancamento" type="checkbox" name="lancamento" value="1" <?php echo (!isset($dados) || !empty($dados->lancamento)) ? 'checked' : ''; ?>>
+                                        <label for="lancamento">Sim</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-sm-2 col-xs-6">
+                                <div class="form-group">
+                                    <label class="control-label">Ativo:</label>
+                                    <div class="checkbox checkbox-primary">
+                                        <input id="ativo" type="checkbox" name="ativo" value="1" <?php echo (!isset($dados) || !isset($dados->ativo) || !empty($dados->ativo)) ? 'checked' : ''; ?>>
+                                        <label for="ativo">Sim</label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="hr-line-dashed"></div>
-                     
 
                         <div class="row">
                             <div class="col-sm-12 col-xs-12">
@@ -57,8 +99,6 @@
                                 </div>
                             </div>
                         </div>
-                        </div>
-                 
                     </form>
                 </div>
             </div>
@@ -67,44 +107,5 @@
 </div>
 
 <script type="text/javascript">
-
-     $('input[name="cpf"]').mask('000.000.000-00', {reverse: true});
-
-var teste;
-    $('input[type="text"]').setMask();
     $("#form-cadastro-categoria").validate({});
-
-    <?php if (!isset($usuario)): ?>
-        $.validator.addClassRules("file", {
-            validate_file: true
-        });
-    <?php endif ?>
-
-    //metodo para validar o valor
-    $.validator.addMethod("validate_file", function(value, element){
-        if(value.length > 0){
-            return true;
-        }
-        if($(".error-file").find('label.error').length){
-            $(".error-file").find('label.error').remove();
-        }
-        $(".error-file").append('<label id="imagem-error" class="error" for="imagem"></label>');
-        return false;
-    }, "Este campo é obrigatório.");
-
-    $('#imagem').on('change', function(){
-        input = $(this);
-        if (input[0].files && input[0].files[0]) {
-            var reader = new FileReader();
-
-            reader.onload = function (e) {
-                $('.lightBoxGallery').find('img').remove();
-                $('.lightBoxGallery').append('<img id="img-show" src="'+e.target.result+'">');
-            }
-
-            reader.readAsDataURL(input[0].files[0]);
-        }else{
-            $('.lightBoxGallery').find('img').remove();
-        }
-    });
 </script>

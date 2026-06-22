@@ -31,6 +31,137 @@ class Usuarios_model extends CI_Model {
         }
     }
 
+    public function get_contextos_usuario($id)
+    {
+        $usuario = $this->get_usuario($id);
+        if(!$usuario || empty($usuario->cpf)){
+            return array();
+        }
+
+        $auth = $this->load->database('auth', TRUE);
+        $cpf_normalizado = preg_replace('/[^0-9]/', '', $usuario->cpf);
+        $auth_user = $auth->select('id')->from('usuarios')
+            ->where("(cpf = ".$auth->escape($usuario->cpf)." OR REPLACE(REPLACE(cpf, '.', ''), '-', '') = ".$auth->escape($cpf_normalizado).")", null, false)
+            ->get()->row();
+        if(!$auth_user){
+            return array();
+        }
+
+        $rows = $auth->select('contexto')->from('usuarios_contextos')
+            ->where('usuarios_id', $auth_user->id)
+            ->where('status', 1)
+            ->get()->result();
+
+        $contextos = array();
+        foreach($rows as $row){
+            $contextos[] = $row->contexto;
+        }
+        return $contextos;
+    }
+
+    public function salvar_contextos_usuario($id, $contextos)
+    {
+        $usuario = $this->get_usuario($id);
+        if(!$usuario || empty($usuario->cpf)){
+            return false;
+        }
+
+        $auth = $this->load->database('auth', TRUE);
+        $cpf_normalizado = preg_replace('/[^0-9]/', '', $usuario->cpf);
+        $auth_user = $auth->select('id')->from('usuarios')
+            ->where("(cpf = ".$auth->escape($usuario->cpf)." OR REPLACE(REPLACE(cpf, '.', ''), '-', '') = ".$auth->escape($cpf_normalizado).")", null, false)
+            ->get()->row();
+
+        if(!$auth_user){
+            $auth->insert('usuarios', array(
+                'nome' => $usuario->nome,
+                'email' => $usuario->email,
+                'cpf' => $usuario->cpf,
+                'senha' => isset($usuario->senha) ? $usuario->senha : '',
+                'status' => isset($usuario->status) ? $usuario->status : 1,
+                'desconto_maximo' => isset($usuario->desconto_maximo) ? $usuario->desconto_maximo : 0
+            ));
+            $auth_user_id = $auth->insert_id();
+        }else{
+            $auth_user_id = $auth_user->id;
+            $auth->where('id', $auth_user_id)->update('usuarios', array(
+                'nome' => $usuario->nome,
+                'email' => $usuario->email,
+                'cpf' => $usuario->cpf,
+                'status' => isset($usuario->status) ? $usuario->status : 1,
+                'desconto_maximo' => isset($usuario->desconto_maximo) ? $usuario->desconto_maximo : 0
+            ));
+        }
+
+        $contextos_validos = array('producao', 'salinas');
+        foreach($contextos_validos as $contexto){
+            $exists = $auth->select('id')->from('usuarios_contextos')
+                ->where('usuarios_id', $auth_user_id)
+                ->where('contexto', $contexto)
+                ->get()->row();
+
+            $status = in_array($contexto, $contextos) ? 1 : 0;
+            if($exists){
+                $auth->where('id', $exists->id)->update('usuarios_contextos', array('status' => $status));
+            }else{
+                $auth->insert('usuarios_contextos', array(
+                    'usuarios_id' => $auth_user_id,
+                    'contexto' => $contexto,
+                    'status' => $status
+                ));
+            }
+        }
+
+        if(in_array('salinas', $contextos)){
+            $this->sincronizar_usuario_salinas($usuario);
+        }
+
+        return true;
+    }
+
+    private function sincronizar_usuario_salinas($usuario)
+    {
+        $salinas = $this->load->database('salinas', TRUE);
+        $cpf_normalizado = preg_replace('/[^0-9]/', '', $usuario->cpf);
+        $usuario_salinas = $salinas->select('id')->from('usuarios')
+            ->where("(cpf = ".$salinas->escape($usuario->cpf)." OR REPLACE(REPLACE(cpf, '.', ''), '-', '') = ".$salinas->escape($cpf_normalizado).")", null, false)
+            ->get()->row();
+
+        $dados = array(
+            'nome' => $usuario->nome,
+            'email' => $usuario->email,
+            'cpf' => $usuario->cpf,
+            'status' => isset($usuario->status) ? $usuario->status : 1,
+            'desconto_maximo' => isset($usuario->desconto_maximo) ? $usuario->desconto_maximo : 0
+        );
+
+        if(isset($usuario->senha) && $usuario->senha){
+            $dados['senha'] = $usuario->senha;
+        }
+
+        if($usuario_salinas){
+            $salinas->where('id', $usuario_salinas->id)->update('usuarios', $dados);
+            return $usuario_salinas->id;
+        }
+
+        $salinas->insert('usuarios', $dados);
+        $usuario_salinas_id = $salinas->insert_id();
+
+        $habilidades = $this->db->select('habilidades_id')
+            ->from('habilidades_has_usuarios')
+            ->where('usuarios_id', $usuario->id)
+            ->get()->result();
+
+        foreach($habilidades as $habilidade){
+            $salinas->insert('habilidades_has_usuarios', array(
+                'usuarios_id' => $usuario_salinas_id,
+                'habilidades_id' => $habilidade->habilidades_id
+            ));
+        }
+
+        return $usuario_salinas_id;
+    }
+
 
 
     public function salvar_permissoes($id=NULL)

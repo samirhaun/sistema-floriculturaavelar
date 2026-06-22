@@ -96,6 +96,7 @@ class Loja_produtos extends TEC_Controller {
                 'nome_tag' => url_title(convert_accented_characters($this->input->post('nome')), '-', true),
                 'categorias_id' => $cats[0],
                 'valor' => $this->input->post('valor'),
+                'valor_custo' => $this->input->post('valor_custo'),
                 'valor_antigo' => $this->input->post('valor_antigo'),
                 'tamanhos' => $tamanho,
                 'valor_frete' => $this->input->post('valor_frete'),

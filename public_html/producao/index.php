@@ -1,8 +1,5 @@
 <?php
 
-phpinfo();
-exit;
-
 /**
  * CodeIgniter
  *
@@ -57,7 +54,7 @@ exit;
  *
  * NOTE: If you change these, also change the error_reporting() code below
  */
-	define('ENVIRONMENT', 'production');
+	define('ENVIRONMENT', 'development');
 
 /*
  *---------------------------------------------------------------
@@ -70,7 +67,7 @@ exit;
 switch (ENVIRONMENT)
 {
 	case 'development':
-		error_reporting(-1);
+		error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
 		ini_set('display_errors', 1);
 	break;
 

@@ -1,0 +1,26 @@
+﻿Snapshot criado em: 2026-06-03 17:16:19 -03:00
+Escopo: plano_contas, contas_pagar, contas_receber
+
+Filial: montes-claros
+Banco: floricultura
+Arquivo: montes-claros-20260603-171613-contas-plano-contas.sql
+Bytes: 2551350
+SHA256: 57FF74CA09CE423E1E456363A657E34A8133558846DAA8CF22C5006F65FAA944
+Linhas:
+  - plano_contas: 151
+  - contas_pagar: 6096
+  - contas_receber: 28436
+
+Filial: salinas
+Banco: jardins_salin
+Arquivo: salinas-20260603-171613-contas-plano-contas.sql
+Bytes: 400777
+SHA256: 0DAEF643ED912B70189ACFD171EE08A742D491344E02FEE0FB76C043B3C403D3
+Linhas:
+  - plano_contas: 33
+  - contas_pagar: 1606
+  - contas_receber: 3941
+
+Restore manual, se precisar voltar:
+mysql --default-character-set=utf8mb4 -h <host> -u <usuario> -p <banco> < <arquivo.sql>
+Observacao: os dumps incluem DROP TABLE/CREATE TABLE/INSERT para as tres tabelas do escopo.

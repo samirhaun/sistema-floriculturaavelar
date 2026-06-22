@@ -38,7 +38,8 @@ public function index()
 
 public function lista()
 {
-    $data['dados'] =  $this->plano_contas_model->get_lista();
+    $data['mostrar_inativos'] = $this->input->get('mostrar_inativos') == 1;
+    $data['dados'] =  $this->plano_contas_model->get_lista($data['mostrar_inativos']);
 
     if($this->input->get('type')){
         $notification = new stdClass;
@@ -56,8 +57,8 @@ public function lista()
 
 function novo(){
     // $this->verifica_permissoes();
-       // $data['categorias'] = $this->plano_contas_model->get_categorias();
-    $this->montaTela('loja/plano_contas/formulario');
+    $data['planos_pai'] = $this->plano_contas_model->get_opcoes_arvore();
+    $this->montaTela('loja/plano_contas/formulario', $data);
 }
 
 function salvar(){
@@ -68,6 +69,9 @@ function salvar(){
         $dados = array(
             'descricao' => $this->input->post('descricao'),
             'cod' => $this->input->post('cod'),
+            'plano_conta_id' => $this->input->post('plano_conta_id') ? $this->input->post('plano_conta_id') : NULL,
+            'lancamento' => $this->input->post('lancamento') ? 1 : 0,
+            'ativo' => $this->input->post('ativo') ? 1 : 0,
         );
 
         $id = NULL;
@@ -113,6 +117,7 @@ public function editar()
     if($this->input->get('id')){
             // $dados['categorias'] = $this->plano_contas_model->get_categorias();
         $dados['dados'] = $this->plano_contas_model->get_registro($this->input->get('id'));
+        $dados['planos_pai'] = $this->plano_contas_model->get_opcoes_arvore($this->input->get('id'));
 
         $this->montaTela('loja/plano_contas/formulario', $dados);
     }

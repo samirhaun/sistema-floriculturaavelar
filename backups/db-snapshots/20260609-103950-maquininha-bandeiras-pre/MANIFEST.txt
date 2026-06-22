@@ -1,0 +1,18 @@
+Snapshot pre maquininha bandeiras
+Criado em: 2026-06-09 13:39:50
+Formato: NDJSON, uma linha JSON por registro
+
+[montes_claros]
+fornecedores: 148 registros
+plano_contas: 167 registros
+maquininhas_cartao: 0 registros
+contas_receber: 28620 registros
+contas_pagar: 6115 registros
+
+[salinas]
+fornecedores: 29 registros
+plano_contas: 55 registros
+maquininhas_cartao: 0 registros
+contas_receber: 3953 registros
+contas_pagar: 1613 registros
+

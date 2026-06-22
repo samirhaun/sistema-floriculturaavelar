@@ -31,6 +31,16 @@ class Contas_pagar_model extends CI_Model {
         }
     }
 
+    public function get_todos_planos_conta()
+    {
+        $this->db->select('cod, descricao');
+        $this->db->from('plano_contas');
+        $this->db->where('plano_contas.ativo', 1);
+        $this->db->order_by('cod ASC');
+        $query = $this->db->get();
+        return $query->num_rows() > 0 ? $query->result() : false;
+    }
+
 
 
 

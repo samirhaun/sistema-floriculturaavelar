@@ -277,7 +277,7 @@
               <div class="col-md-12">
                 <div class="form-group">
                   
-                  <input type="checkbox" id="possui_bilhete" name="possui_bilhete" <?php if (isset($pedido) && !empty($pedido->bilhete)){echo 'checked="checked"';} ?> />
+                  <input type="checkbox" id="possui_bilhete" name="possui_bilhete" value="1" <?php if (isset($pedido) && !empty($pedido->bilhete)){echo 'checked="checked"';} ?> />
 
                   <label class="control-label" for="possui_bilhete" onclick="verifica_bilhete()"> Possui bilhete?</label>
 
@@ -723,7 +723,7 @@
                   </div>
               </div>
 
-              <div class="col-md-4">
+              <div class="col-md-2">
                   <div class="form-group">
                   <label class="control-label">Forma de pagamento:</label>
                   <select required="" class="form-control" name="forma_pgto_receita[]">
@@ -741,11 +741,58 @@
                   </select>
                   </div>
               </div>
+
+              <div class="col-md-2">
+                  <div class="form-group">
+                  <label class="control-label">Maquininha:</label>
+                  <select class="form-control maquininha-cartao-select" name="maquininha_cartao_id_receita[]">
+                      <option value="">Selecione</option>
+                      <?php if(!empty($maquininhas_cartao)): foreach($maquininhas_cartao as $maquininha_cartao): ?>
+                      <option <?php if (isset($conta_receber) && $conta_receber->maquininha_cartao_id == $maquininha_cartao->id){echo 'selected';} ?> value="<?php echo $maquininha_cartao->id ?>"><?php echo $maquininha_cartao->nome ?></option>
+                      <?php endforeach; endif; ?>
+                  </select>
+                  </div>
+              </div>
+
+              <div class="col-md-2">
+                  <div class="form-group">
+                  <label class="control-label">Grupo bandeira:</label>
+                  <select class="form-control maquininha-taxa-select" name="maquininha_taxa_id_receita[]" data-selected="<?php echo (isset($conta_receber->maquininha_taxa_id)) ? $conta_receber->maquininha_taxa_id : '' ?>">
+                      <option value="">Selecione</option>
+                  </select>
+                  </div>
+              </div>
         
 
           
                 
     </div>
+
+            <?php if(!empty($conta_receber->taxa_valor) && $conta_receber->taxa_valor > 0): ?>
+            <div class="row" style="margin-bottom: 15px; margin-top: -5px;">
+                <div class="col-sm-12">
+                    <div style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 6px 10px; font-size: 12px;">
+                        <i class="fa fa-credit-card"></i> <strong>Conta a pagar (taxa maquininha):</strong>
+                        <?php echo $conta_receber->taxa_descricao; ?><br>
+                        <span style="margin-left: 17px;">Valor: <strong>R$ <?php echo number_format($conta_receber->taxa_valor, 2, ',', '.'); ?></strong></span>
+                        | Vencimento: <?php echo date('d/m/Y', strtotime($conta_receber->taxa_data_vencimento)); ?>
+                        <?php if(!empty($conta_receber->taxa_data_pago)): ?>
+                        | Pago em: <?php echo date('d/m/Y', strtotime($conta_receber->taxa_data_pago)); ?>
+                        <?php endif; ?>
+                        | Status: <?php echo ($conta_receber->taxa_status == 1) ? '<span class="label label-success" style="font-size:11px;">Pago</span>' : '<span class="label label-warning" style="font-size:11px;">Pendente</span>'; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <div class="row taxa-preview-row" style="display:none; margin-bottom: 15px; margin-top: -5px;">
+                <div class="col-sm-12">
+                    <div style="background-color: #e8eaf6; border: 1px solid #3f51b5; border-radius: 4px; padding: 6px 10px; font-size: 12px;">
+                        <i class="fa fa-calculator"></i> <strong>Taxa maquininha estimada:</strong>
+                        <span class="taxa-preview-text" style="margin-left: 10px;"></span>
+                    </div>
+                </div>
+            </div>
 
     <?php 
             endforeach;
@@ -809,7 +856,7 @@
                   </div>
               </div>
 
-              <div class="col-md-4">
+              <div class="col-md-2">
                   <div class="form-group">
                   <label class="control-label">Forma de pagamento:</label>
                   <select required="" class="form-control" name="forma_pgto_receita[]">
@@ -827,10 +874,40 @@
                   </select>
                   </div>
               </div>
+
+              <div class="col-md-2">
+                  <div class="form-group">
+                  <label class="control-label">Maquininha:</label>
+                  <select class="form-control maquininha-cartao-select" name="maquininha_cartao_id_receita[]">
+                      <option value="">Selecione</option>
+                      <?php if(!empty($maquininhas_cartao)): foreach($maquininhas_cartao as $maquininha_cartao): ?>
+                      <option value="<?php echo $maquininha_cartao->id ?>"><?php echo $maquininha_cartao->nome ?></option>
+                      <?php endforeach; endif; ?>
+                  </select>
+                  </div>
+              </div>
+
+              <div class="col-md-2">
+                  <div class="form-group">
+                  <label class="control-label">Grupo bandeira:</label>
+                  <select class="form-control maquininha-taxa-select" name="maquininha_taxa_id_receita[]" data-selected="">
+                      <option value="">Selecione</option>
+                  </select>
+                  </div>
+              </div>
         
 
           
                 
+    </div>
+
+    <div class="row taxa-preview-row" style="display:none; margin-bottom: 15px; margin-top: -5px;">
+        <div class="col-sm-12">
+            <div style="background-color: #e8eaf6; border: 1px solid #3f51b5; border-radius: 4px; padding: 6px 10px; font-size: 12px;">
+                <i class="fa fa-calculator"></i> <strong>Taxa maquininha estimada:</strong>
+                <span class="taxa-preview-text" style="margin-left: 10px;"></span>
+            </div>
+        </div>
     </div>
 
     <?php endif; ?>
@@ -840,6 +917,34 @@
 
     </div>
     <!-- FIM ITEM PRODUTO -->
+
+    <?php if(!empty($contas_receber)): 
+        $total_taxas = 0;
+        $total_taxas_pagas = 0;
+        $total_taxas_pendentes = 0;
+        foreach($contas_receber as $c):
+            if(!empty($c->taxa_valor) && $c->taxa_valor > 0):
+                $total_taxas += $c->taxa_valor;
+                if($c->taxa_status == 1):
+                    $total_taxas_pagas += $c->taxa_valor;
+                else:
+                    $total_taxas_pendentes += $c->taxa_valor;
+                endif;
+            endif;
+        endforeach;
+        if($total_taxas > 0):
+    ?>
+    <div class="row">
+        <div class="col-sm-12">
+            <div style="background-color: #fce4ec; border: 1px solid #e91e63; border-radius: 4px; padding: 8px 12px; font-size: 13px; margin-bottom: 15px;">
+                <strong><i class="fa fa-credit-card"></i> Total taxas de maquininha (contas a pagar):</strong>
+                <span style="margin-left: 10px;">Total: <strong>R$ <?php echo number_format($total_taxas, 2, ',', '.'); ?></strong></span>
+                | Pago: <span class="label label-success" style="font-size:11px;">R$ <?php echo number_format($total_taxas_pagas, 2, ',', '.'); ?></span>
+                | Pendente: <span class="label label-warning" style="font-size:11px;">R$ <?php echo number_format($total_taxas_pendentes, 2, ',', '.'); ?></span>
+            </div>
+        </div>
+    </div>
+    <?php endif; endif; ?>
 
 
 
@@ -933,7 +1038,7 @@
 
                     <?php foreach ($produtos as $key => $produto): ?>
                       <option value="<?php echo $produto->id ?>"><?php echo $produto->titulo; ?></option>
-                    <?php endforeach ?>
+                    <?php endforeach; ?>
                     
                   </select>
                 </div>
@@ -1043,7 +1148,7 @@
                   </div>
               </div>
 
-              <div class="col-md-4">
+              <div class="col-md-2">
                   <div class="form-group">
                   <label class="control-label">Forma de pagamento:</label>
                   <select required="" class="form-control" name="forma_pgto_receita[]">
@@ -1061,10 +1166,40 @@
                   </select>
                   </div>
               </div>
+
+              <div class="col-md-2">
+                  <div class="form-group">
+                  <label class="control-label">Maquininha:</label>
+                  <select class="form-control maquininha-cartao-select" name="maquininha_cartao_id_receita[]">
+                      <option value="">Selecione</option>
+                      <?php if(!empty($maquininhas_cartao)): foreach($maquininhas_cartao as $maquininha_cartao): ?>
+                      <option value="<?php echo $maquininha_cartao->id ?>"><?php echo $maquininha_cartao->nome ?></option>
+                      <?php endforeach; endif; ?>
+                  </select>
+                  </div>
+              </div>
+
+              <div class="col-md-2">
+                  <div class="form-group">
+                  <label class="control-label">Grupo bandeira:</label>
+                  <select class="form-control maquininha-taxa-select" name="maquininha_taxa_id_receita[]" data-selected="">
+                      <option value="">Selecione</option>
+                  </select>
+                  </div>
+              </div>
         
 
           
                 
+    </div>
+
+    <div class="row taxa-preview-row" style="display:none; margin-bottom: 15px; margin-top: -5px;">
+        <div class="col-sm-12">
+            <div style="background-color: #e8eaf6; border: 1px solid #3f51b5; border-radius: 4px; padding: 6px 10px; font-size: 12px;">
+                <i class="fa fa-calculator"></i> <strong>Taxa maquininha estimada:</strong>
+                <span class="taxa-preview-text" style="margin-left: 10px;"></span>
+            </div>
+        </div>
     </div>
 
 
@@ -1317,7 +1452,7 @@ function modelo_valor(elementos){
                 
               }else{
 
-                alert('Não permitido. Quantidade disponível: '+ result.qtd_disponivel);
+                swal('Atenção', 'Não permitido. Quantidade disponível: '+ result.qtd_disponivel, 'warning');
 
                 $('#quantidade_collapse_'+countproduto).val(0);
 
@@ -1344,7 +1479,7 @@ function modelo_valor(elementos){
                 if(parseInt(em_estoque) < parseInt(precisa_para_produzir)){
                   // let indisponiveis = indisponiveis.concat(result.itens[index].desc_prod + 'Indisponível para venda.<br>');
                   // indisponiveis.concat(indisponiveis, result.itens[index].desc_prod + 'Indisponível para venda.<br>');
-                  alert(result.itens[index].desc_prod + ' Indisponível para produção do produto.');
+                  swal('Atenção', result.itens[index].desc_prod + ' Indisponível para produção do produto.', 'warning');
                   $('#quantidade_collapse_'+countproduto).val(0);
                   
                 }else{
@@ -1434,23 +1569,31 @@ function modelo_valor(elementos){
 
         var total_desconto_usuario = "<?php echo $usuario->desconto_maximo ?>";
 
-        //OCULTO KENNEDY DESCONTO PQ INSERIO DINHEIRO AGORA
-        // if(parseInt(desconto) > parseInt(total_desconto_usuario)){
-        //   alert('Desconto não permitido');
-        //   $('#valor_desconto').val(0);
-        //   var desconto_geral = 0;
-        // }else{
-
-          //desconto por porcentagem
+        var limite_pct = parseFloat(total_desconto_usuario);
+        if(limite_pct > 0){
+          if(tipo_desconto_atual == 'porcentagem'){
+            var pct_aplicado = parseFloat(desconto);
+          }else{
+            var pct_aplicado = (parseFloat(desconto) / (parseFloat(valor_produtos) + parseFloat(frete))) * 100;
+          }
+          if(pct_aplicado > limite_pct){
+            swal('Desconto não permitido', pct_aplicado.toFixed(1) + '% excede o limite de ' + limite_pct.toFixed(0) + '%', 'error');
+            $('#valor_desconto').val(0);
+            var desconto_geral = 0;
+          }else{
+            if(tipo_desconto_atual == 'porcentagem'){
+              var desconto_geral = (parseFloat(valor_produtos) + parseFloat(frete)) * parseFloat(desconto) / 100;
+            }else{
+              var desconto_geral = desconto;
+            }
+          }
+        }else{
           if(tipo_desconto_atual == 'porcentagem'){
             var desconto_geral = (parseFloat(valor_produtos) + parseFloat(frete)) * parseFloat(desconto) / 100;
-          //desconto dinheiro
           }else{
             var desconto_geral = desconto;
           }
-
-          
-        // }
+        }
 
       }else{    
         var desconto_geral = 0;
@@ -1577,6 +1720,158 @@ $('.data_mask').datepicker({
     $("[name=forma_pgto_entrada]").select2({
         placeholder: "Selecione uma forma de pagamento",
         allowClear: true
+    });
+
+    var taxasMaquininhas = <?php echo json_encode(!empty($maquininhas_cartao_taxas) ? $maquininhas_cartao_taxas : array()); ?>;
+    var maquininhasData = <?php echo json_encode(!empty($maquininhas_cartao) ? $maquininhas_cartao : array()); ?>;
+
+    function atualizaSelectTaxasMaquininha(linha)
+    {
+        var $linha = $(linha);
+        var $maquininha = $linha.find('.maquininha-cartao-select');
+        var $taxa = $linha.find('.maquininha-taxa-select');
+
+        if (!$taxa.length) {
+            return;
+        }
+
+        var selecionado = $taxa.attr('data-selected') || $taxa.val();
+        var maquininhaId = $maquininha.val();
+
+        if ($taxa.data('select2')) {
+            $taxa.select2('destroy');
+        }
+
+        $taxa.html('<option value="">Selecione</option>');
+
+        $.each(taxasMaquininhas, function(index, taxa) {
+            if (String(taxa.maquininha_cartao_id) === String(maquininhaId)) {
+                var texto = taxa.grupo_bandeira;
+                if (taxa.bandeiras) {
+                    texto += ' - ' + taxa.bandeiras;
+                }
+                $taxa.append($('<option>', { value: taxa.id, text: texto }));
+            }
+        });
+
+        if (selecionado && $taxa.find('option[value="' + selecionado + '"]').length) {
+            $taxa.val(selecionado);
+        } else {
+            $taxa.val('');
+        }
+
+        $taxa.select2({
+            placeholder: "Selecione o grupo",
+            allowClear: true
+        });
+
+        atualizaPreviewTaxa($linha);
+    }
+
+    function inicializaSelectMaquininhas(contexto)
+    {
+        var $contexto = contexto ? $(contexto) : $(document);
+
+        $contexto.find(".maquininha-cartao-select").each(function() {
+            if (!$(this).data('select2')) {
+                $(this).select2({
+                    placeholder: "Selecione uma maquininha",
+                    allowClear: true
+                });
+            }
+        });
+
+        $contexto.find(".maquininha-taxa-select").each(function() {
+            atualizaSelectTaxasMaquininha($(this).closest('.row'));
+        });
+    }
+
+    inicializaSelectMaquininhas();
+
+    $(document).on('change', '.maquininha-cartao-select', function() {
+        var $linha = $(this).closest('.row');
+        $linha.find('.maquininha-taxa-select').attr('data-selected', '');
+        atualizaSelectTaxasMaquininha($linha);
+        atualizaPreviewTaxa($linha);
+    });
+
+    function getCampoTaxa(formaPgto) {
+        switch (parseInt(formaPgto)) {
+            case 2: return 'taxa_debito';
+            case 3: return 'taxa_credito_1x';
+            case 4: return 'taxa_credito_2x';
+            case 5: return 'taxa_credito_3x';
+            case 6: return 'taxa_credito_4x';
+            default: return null;
+        }
+    }
+
+    function atualizaPreviewTaxa($linha) {
+        var $item = $linha.closest('.row.item');
+        if (!$item.length) $item = $linha.closest('.item');
+        if (!$item.length) return;
+        var $preview = $item.nextAll('.taxa-preview-row').first();
+        if (!$preview.length) return;
+
+        var formaPgto = $item.find('[name="forma_pgto_receita[]"]').val();
+        var maquininhaId = $item.find('[name="maquininha_cartao_id_receita[]"]').val();
+        var taxasId = $item.find('[name="maquininha_taxa_id_receita[]"]').val();
+        var valorStr = $item.find('[name="valor_receita[]"]').val();
+
+        var campoTaxa = getCampoTaxa(formaPgto);
+        if (!campoTaxa || !maquininhaId || !valorStr) {
+            $preview.hide();
+            return;
+        }
+
+        var valor = parseFloat(valorStr.replace(',', '.'));
+        if (isNaN(valor) || valor <= 0) {
+            $preview.hide();
+            return;
+        }
+
+        var percentual = null;
+        var descricao = '';
+
+        if (taxasId) {
+            for (var i = 0; i < taxasMaquininhas.length; i++) {
+                if (String(taxasMaquininhas[i].id) === String(taxasId)) {
+                    percentual = parseFloat(taxasMaquininhas[i][campoTaxa]);
+                    descricao = taxasMaquininhas[i].grupo_bandeira;
+                    break;
+                }
+            }
+        }
+
+        if (percentual === null || isNaN(percentual)) {
+            for (var j = 0; j < maquininhasData.length; j++) {
+                if (String(maquininhasData[j].id) === String(maquininhaId)) {
+                    percentual = parseFloat(maquininhasData[j][campoTaxa]);
+                    descricao = maquininhasData[j].nome;
+                    break;
+                }
+            }
+        }
+
+        if (percentual === null || isNaN(percentual) || percentual <= 0) {
+            $preview.hide();
+            return;
+        }
+
+        var taxaValor = Math.round(valor * percentual) / 100;
+        $preview.find('.taxa-preview-text').html(
+            descricao + ' | Taxa: ' + percentual.toFixed(2) + '% | ' +
+            'Valor: <strong>R$ ' + taxaValor.toFixed(2).replace('.', ',') + '</strong>'
+        );
+        $preview.show();
+    }
+
+    $(document).on('change', '[name="forma_pgto_receita[]"], [name="maquininha_taxa_id_receita[]"]', function() {
+        atualizaPreviewTaxa($(this).closest('.row'));
+    });
+
+    $(document).on('input', '[name="valor_receita[]"]', function() {
+        atualizaPreviewTaxa($(this).closest('.row'));
     });
 
     $("[name=clientes_id]").select2({
@@ -2022,7 +2317,7 @@ $('.data_mask').datepicker({
                         result = JSON.parse(result)
 
                         if(!result.cupom){
-                          alert('Cupom inválido!')
+                          swal('Atenção', 'Cupom inválido!', 'error');
                         }else{
 
                           var total_pedido = $('#valor_total').val();
@@ -2035,7 +2330,7 @@ $('.data_mask').datepicker({
 
                           $('#valor_desconto').val(result.cupom.porcentagem_desconto);
 
-                          alert('Cupom de '+result.cupom.porcentagem_desconto+' % aplicado!')
+                          swal('Sucesso', 'Cupom de '+result.cupom.porcentagem_desconto+' % aplicado!', 'success');
 
                         }
 
@@ -2079,6 +2374,7 @@ $('.data_mask').datepicker({
 
       $('.data_mask').mask('00/00/0000');
       $('.valor_mask').mask('00000,00', {reverse: true});
+      inicializaSelectMaquininhas($('.contasreceber-vinculadas .item:last'));
 
     //   $('.data_mask').datepicker({
     // autoclose: false,
@@ -2143,7 +2439,7 @@ $('.data_mask').datepicker({
           });
 
           if(total_pagar != soma_contas_receber){
-            alert('O valor da soma das parcelas é divergente do Valor Final a pagar.')
+            swal('Atenção', 'O valor da soma das parcelas é divergente do Valor Final a pagar.', 'warning');
           }else{
             $('#form-cadastro-pedido').submit();
           }
@@ -2166,13 +2462,13 @@ $('.data_mask').datepicker({
           calcula_pedito_total();
           $('#tipo_desconto_span').text('R$');
           $('#tipo_desconto').val('dinheiro');
-          alert('desconto alterado para dinheiro.')
+          swal('', 'Desconto alterado para dinheiro.', 'info');
         }else{
           $('#valor_desconto').val(0);
           calcula_pedito_total();
           $('#tipo_desconto_span').text('%');
           $('#tipo_desconto').val('porcentagem');
-          alert('desconto alterado para porcentagem.')
+          swal('', 'Desconto alterado para porcentagem.', 'info');
         }
 
       }
@@ -2192,7 +2488,7 @@ $('.data_mask').datepicker({
 
             if(result > 0){
               $('#valor_frete').val(result)
-              alert('Frete para o bairro '+termo+' aplicado.')
+              swal('Frete aplicado', 'Frete para '+termo+' aplicado.', 'success');
             }
 
         },

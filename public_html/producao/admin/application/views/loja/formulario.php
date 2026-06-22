@@ -104,6 +104,13 @@
                                 </div>
                             </div>
 
+                            <div class="col-sm-4 col-xs-12">
+                                <div class="form-group">
+                                    <label class="control-label">Preço de custo:</label>
+                                    <input type="text" name="valor_custo" class="form-control" value="<?php echo (isset($produto)) ? $produto->valor_custo : '' ?>" alt="money">
+                                </div>
+                            </div>
+
                             <div class="col-sm-6 col-xs-12 error-note">
                                 <div class="form-group">
                                     <label class="control-label">Forma de pagamento: </label>

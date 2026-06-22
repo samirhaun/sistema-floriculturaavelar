@@ -1,0 +1,29 @@
+﻿Snapshot pre-feature maquininha criado em: 2026-06-09 10:13:00 -03:00
+Escopo: pedidos, contas_receber, contas_pagar, fornecedores, plano_contas
+
+Filial: montes-claros
+Banco: floricultura
+Arquivo: montes-claros-20260609-101249-maquininha-pre.sql
+Bytes: 10932483
+SHA256: B5A94DDE80D536CDA06D70D891C966B4F88D469ADE540C94D217E40265E9F505
+Linhas:
+  - pedidos: 27651
+  - contas_receber: 28617
+  - contas_pagar: 6115
+  - fornecedores: 148
+  - plano_contas: 167
+
+Filial: salinas
+Banco: jardins_salin
+Arquivo: salinas-20260609-101249-maquininha-pre.sql
+Bytes: 1421912
+SHA256: EBD1A1C91BF358EAB166BE7D2A50C9ED50D26E31880CA456F2D680387FDE39FB
+Linhas:
+  - pedidos: 3810
+  - contas_receber: 3953
+  - contas_pagar: 1613
+  - fornecedores: 29
+  - plano_contas: 55
+
+Restore manual:
+mysql --default-character-set=utf8mb4 -h <host> -u <usuario> -p <banco> < <arquivo.sql>

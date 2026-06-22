@@ -70,7 +70,8 @@ public function lista_enderecos()
 function novo_usuario(){
     // $this->verifica_permissoes();
        // $data['categorias'] = $this->usuarios_model->get_categorias();
-    $this->montaTela('loja/usuarios/formulario');
+    $data['contextos_usuario'] = array('producao');
+    $this->montaTela('loja/usuarios/formulario', $data);
 }
 
 function salvar_usuario(){
@@ -98,6 +99,7 @@ function salvar_usuario(){
         if($id_usuario = $this->usuarios_model->salvar_usuario($dados, $id))
         {
             $this->usuarios_model->salvar_permissoes($id_usuario);
+            $this->usuarios_model->salvar_contextos_usuario($id_usuario, (array) $this->input->post('contextos'));
 
             $_GET['type'] = 'success';
             if($id){
@@ -131,6 +133,10 @@ public function editar_usuario()
     if($this->input->get('id')){
             // $dados['categorias'] = $this->usuarios_model->get_categorias();
         $dados['usuario'] = $this->usuarios_model->get_usuario($this->input->get('id'));
+        $dados['contextos_usuario'] = $this->usuarios_model->get_contextos_usuario($this->input->get('id'));
+        if(empty($dados['contextos_usuario'])){
+            $dados['contextos_usuario'] = array('producao');
+        }
 
         $this->montaTela('loja/usuarios/formulario', $dados);
     }
