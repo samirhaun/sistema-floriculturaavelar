@@ -101,6 +101,8 @@ $route['site/enderecos-cliente']                      = "Site_pedidos/enderecos_
 $route['site/enderecos-cliente-setar']                = "Site_pedidos/enderecos_cliente_setar";
 
 $route['site/get-cupom']                              = "Site_pedidos/get_cupom";
+$route['site/solicitar-codigo-desconto']              = "Site_pedidos/solicitar_codigo_desconto";
+$route['site/validar-codigo-desconto']                = "Site_pedidos/validar_codigo_desconto";
 
 
 
@@ -354,6 +356,7 @@ $route['loja/imprimir']                              = "Loja_pedidos/detalhes_pe
 $route['loja/editar-pedido']                         = "Loja_pedidos/editar_pedido";
 $route['loja/salvar-pedido']                         = "Loja_pedidos/salvar_pedido";
 $route['loja/salvar-rastreio']                       = "Loja_pedidos/salvar_rastreio";
+$route['loja/excluir-pedido']                        = "Loja_pedidos/excluir_pedido";
 $route['finalizar-pedido']                           = "Loja_pedidos/finalizar_pedido";
 
 $route['loja/demonstrativo']                               = "Loja_demonstrativo/demonstrativo";

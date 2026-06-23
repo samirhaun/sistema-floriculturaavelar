@@ -12,6 +12,7 @@
             'taxa_credito_2x' => isset($dados) ? $dados->taxa_credito_2x : 0,
             'taxa_credito_3x' => isset($dados) ? $dados->taxa_credito_3x : 0,
             'taxa_credito_4x' => isset($dados) ? $dados->taxa_credito_4x : 0,
+            'taxa_antecipacao' => isset($dados) ? $dados->taxa_antecipacao : 0,
         );
     }
 ?>
@@ -75,6 +76,7 @@
                                                     <th>Credito 2x %</th>
                                                     <th>Credito 3x %</th>
                                                     <th>Credito 4x %</th>
+                                                    <th>Antecipacao %</th>
                                                     <th class="text-center no-orderable">Acoes</th>
                                                 </tr>
                                             </thead>
@@ -91,6 +93,7 @@
                                                         <td><input type="text" name="taxa_credito_2x[]" class="form-control taxa-mask" value="<?php echo number_format($taxa->taxa_credito_2x, 2, ',', '.') ?>"></td>
                                                         <td><input type="text" name="taxa_credito_3x[]" class="form-control taxa-mask" value="<?php echo number_format($taxa->taxa_credito_3x, 2, ',', '.') ?>"></td>
                                                         <td><input type="text" name="taxa_credito_4x[]" class="form-control taxa-mask" value="<?php echo number_format($taxa->taxa_credito_4x, 2, ',', '.') ?>"></td>
+                                                        <td><input type="text" name="taxa_antecipacao[]" class="form-control taxa-mask" value="<?php echo number_format($taxa->taxa_antecipacao, 2, ',', '.') ?>"></td>
                                                         <td class="text-center"><button type="button" class="btn btn-white remover-taxa"><i class="fa fa-trash"></i></button></td>
                                                     </tr>
                                                 <?php endforeach; ?>
@@ -130,6 +133,7 @@
         <td><input type="text" name="taxa_credito_2x[]" class="form-control taxa-mask" value="0,00"></td>
         <td><input type="text" name="taxa_credito_3x[]" class="form-control taxa-mask" value="0,00"></td>
         <td><input type="text" name="taxa_credito_4x[]" class="form-control taxa-mask" value="0,00"></td>
+        <td><input type="text" name="taxa_antecipacao[]" class="form-control taxa-mask" value="0,00"></td>
         <td class="text-center"><button type="button" class="btn btn-white remover-taxa"><i class="fa fa-trash"></i></button></td>
     </tr>
 </script>

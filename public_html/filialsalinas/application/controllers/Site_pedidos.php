@@ -229,9 +229,6 @@ function salvar_pedido(){
   if($this->input->post()){
 
 
-    /* SALVANDO NOVO CLIENTE CASO TENHA */
-    if($this->input->post('clientes_id') == 'novo'):
-
     // VALIDAÇÃO DESCONTO MÁXIMO (%)
     $desconto_valor = (float) str_replace(',', '.', $this->input->post('valor_desconto'));
     $tipo_desconto = $this->input->post('tipo_desconto');
@@ -248,12 +245,21 @@ function salvar_pedido(){
     $desconto_maximo = (float) $usuario_logado->desconto_maximo;
 
     if($desconto_maximo > 0 && $pct_aplicado > $desconto_maximo){
-      $response['type'] = 'error';
-      $response['title'] = 'Desconto não permitido';
-      $response['message'] = number_format($pct_aplicado, 1) . '% excede o limite de ' . number_format($desconto_maximo, 0) . '% do seu usuário.';
-      echo json_encode($response);
-      exit;
+      $autorizado = (isset($_SESSION['auth_desconto_autorizado']) && $_SESSION['auth_desconto_autorizado'] === true);
+      if(!$autorizado){
+        $msg = urlencode(number_format($pct_aplicado, 1) . '% excede o limite de ' . number_format($desconto_maximo, 0) . '% do seu usuário.');
+        if($this->input->post('id')){
+          redirect('site/editar-pedido?id=' . $this->input->post('id') . '&type=error&title=Desconto+não+permitido&message=' . $msg);
+        } else {
+          redirect('site/novo-pedido?type=error&title=Desconto+não+permitido&message=' . $msg);
+        }
+      }
+      unset($_SESSION['auth_desconto_codigo'], $_SESSION['auth_desconto_expira'], $_SESSION['auth_desconto_autorizado']);
     }
+
+
+    /* SALVANDO NOVO CLIENTE CASO TENHA */
+    if($this->input->post('clientes_id') == 'novo'):
 
     $dados = array(
         'origem' => 2,
@@ -849,6 +855,99 @@ function enderecos_cliente_setar()
 
      echo json_encode($dados);
 
+}
+
+//SOLICITAR CODIGO DE AUTORIZACAO DE DESCONTO
+function solicitar_codigo_desconto()
+{
+    $code = strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 6));
+    $expiresAt = time() + 900; // 15 minutos
+
+    $_SESSION['auth_desconto_codigo'] = $code;
+    $_SESSION['auth_desconto_expira'] = $expiresAt;
+    $_SESSION['auth_desconto_autorizado'] = false;
+
+    $pct = $this->input->post('pct');
+    $vendedor = $this->auth->get_nome_usuario();
+
+    $text = "🔐 *AUTORIZACAO DE DESCONTO*\n\n"
+        . "Vendedor: *{$vendedor}*\n"
+        . "Desconto solicitado: *{$pct}%*\n\n"
+        . "Codigo: *{$code}*\n"
+        . "Valido por 15 minutos.";
+
+    $apiUrl = 'https://avelar.atenderbem.com/int/enqueueMessageToSend';
+    $numeros = ['38984011923', '38988519293'];
+    $erros = [];
+
+    foreach ($numeros as $numero) {
+        $postData = [
+            "queueId" => 98,
+            "apiKey" => 'ca21b412646e426c862dc63f9f374c68',
+            "templateId" => 0,
+            "headerFile" => "",
+            "varsdata" => "",
+            "number" => $numero,
+            "country" => "BR",
+            "clientId" => uniqid(),
+            "text" => $text,
+            "fileId" => 1768299,
+            "buttonsConfig" => null,
+            "urlButtonConfig" => null,
+            "listConfig" => null,
+            "campaignName" => "",
+            "extData" => "",
+            "extFlag" => 0,
+            "hidden" => false
+        ];
+
+        $curl = curl_init();
+        curl_setopt($curl, CURLOPT_URL, $apiUrl);
+        curl_setopt($curl, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($curl, CURLOPT_POST, true);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($postData));
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 5);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 15);
+        $response = curl_exec($curl);
+        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($curl);
+        curl_close($curl);
+
+        $log = date('Y-m-d H:i:s') . " | numero: {$numero} | HTTP: {$httpCode} | response: {$response}";
+        if ($curlError) {
+            $log .= " | curl_error: {$curlError}";
+        }
+        error_log("WHATSAPP_DESCONTO: " . $log);
+
+        if ($httpCode < 200 || $httpCode >= 300) {
+            $erros[] = "HTTP {$httpCode} para {$numero}" . ($response ? ": {$response}" : "");
+        }
+    }
+
+    if (count($erros) === count($numeros)) {
+        echo json_encode(['success' => false, 'message' => implode(' | ', $erros)]);
+    } else {
+        echo json_encode(['success' => true]);
+    }
+}
+
+//VALIDAR CODIGO DE AUTORIZACAO
+function validar_codigo_desconto()
+{
+    $codigo = $this->input->post('codigo');
+
+    if (isset($_SESSION['auth_desconto_codigo']) &&
+        isset($_SESSION['auth_desconto_expira']) &&
+        $_SESSION['auth_desconto_expira'] > time() &&
+        strtoupper($codigo) === $_SESSION['auth_desconto_codigo']) {
+
+        $_SESSION['auth_desconto_autorizado'] = true;
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Código inválido ou expirado.']);
+    }
 }
 
 //BUSCANDO CUPOM

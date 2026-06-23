@@ -227,8 +227,8 @@ class Pedidos_model extends CI_Model {
                 $ids_contas[] = $conta_atual->id;
             }
 
-            $this->db->where_in('contas_receber_id', $ids_contas);
-            $this->db->where('origem', 'taxa_maquininha');
+$this->db->where_in('contas_receber_id', $ids_contas);
+            $this->db->where_in('origem', array('taxa_maquininha', 'taxa_antecipacao'));
             $this->db->delete('contas_pagar');
         }
 
@@ -239,12 +239,14 @@ class Pedidos_model extends CI_Model {
             foreach($dados as $receita){
                 $this->db->insert('contas_receber', $receita);
                 $conta_receber_id = $this->db->insert_id();
-                $taxa_conta_id = $this->criar_conta_taxa_maquininha($receita, $conta_receber_id, $pedido_id);
+$taxa_conta_id = $this->criar_conta_taxa_maquininha($receita, $conta_receber_id, $pedido_id);
 
                 if($taxa_conta_id){
                     $this->db->where('id', $conta_receber_id);
                     $this->db->update('contas_receber', array('taxa_contas_pagar_id' => $taxa_conta_id));
                 }
+
+                $this->criar_conta_taxa_antecipacao($receita, $conta_receber_id, $pedido_id);
             }
         }
 
@@ -312,7 +314,7 @@ class Pedidos_model extends CI_Model {
         return $this->db->insert_id();
     }
 
-    private function campo_taxa_maquininha($forma_pgto)
+private function campo_taxa_maquininha($forma_pgto)
     {
         switch ((int) $forma_pgto) {
             case 2:
@@ -328,6 +330,65 @@ class Pedidos_model extends CI_Model {
             default:
                 return 'taxa_debito';
         }
+    }
+
+    private function criar_conta_taxa_antecipacao($receita, $conta_receber_id, $pedido_id)
+    {
+        if((empty($receita['maquininha_cartao_id']) && empty($receita['maquininha_taxa_id'])) || !in_array((int) $receita['forma_pgto'], array(3, 4, 5, 6))){
+            return null;
+        }
+
+        $taxa_bandeira = null;
+        if(!empty($receita['maquininha_taxa_id'])){
+            $taxa_bandeira = $this->db->select('*')
+                ->from('maquininhas_cartao_taxas')
+                ->where('id', $receita['maquininha_taxa_id'])
+                ->where('ativo', 1)
+                ->where('deleted_at IS NULL', null, false)
+                ->get()->row();
+
+            if($taxa_bandeira){
+                $receita['maquininha_cartao_id'] = $taxa_bandeira->maquininha_cartao_id;
+            }
+        }
+
+        $maquininha = $this->db->select('*')
+            ->from('maquininhas_cartao')
+            ->where('id', $receita['maquininha_cartao_id'])
+            ->where('ativo', 1)
+            ->where('deleted_at IS NULL', null, false)
+            ->get()->row();
+
+        if(!$maquininha){
+            return null;
+        }
+
+        $origem_taxa = $taxa_bandeira ? $taxa_bandeira : $maquininha;
+        $percentual = isset($origem_taxa->taxa_antecipacao) ? (float) $origem_taxa->taxa_antecipacao : 0;
+        $valor_receita = (float) $receita['valor'];
+        $valor_taxa = round(($valor_receita * $percentual) / 100, 2);
+
+        if($valor_taxa <= 0){
+            return null;
+        }
+
+        $data_vencimento = !empty($receita['data_pago']) ? $receita['data_pago'] : $receita['data_vencimento'];
+
+        $conta_pagar = array(
+            'descricao' => 'Taxa antecipacao '.$maquininha->nome.($taxa_bandeira ? ' - '.$taxa_bandeira->grupo_bandeira : '').' - pedido #'.$pedido_id,
+            'data_vencimento' => $data_vencimento,
+            'valor' => $valor_taxa,
+            'status' => ((int) $receita['status'] === 1) ? 1 : 0,
+            'data_pago' => ((int) $receita['status'] === 1) ? $data_vencimento : null,
+            'plano_contas_id' => $maquininha->plano_contas_taxa_id,
+            'fornecedores_id' => $maquininha->fornecedor_id,
+            'forma_pgto' => null,
+            'contas_receber_id' => $conta_receber_id,
+            'origem' => 'taxa_antecipacao',
+        );
+
+        $this->db->insert('contas_pagar', $conta_pagar);
+        return $this->db->insert_id();
     }
 
     public function get_contas_receber_pedidos($pedido_id)

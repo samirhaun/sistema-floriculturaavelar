@@ -299,6 +299,40 @@
         // Executa o tooltip depois de 1 segundo, para esperar a tabela renderizar
         setTimeout(function() {$('[data-toggle="tooltip"]').tooltip();}, 1000);
 
+        $(document).on('click', '.excluir-pedido', function(e){
+            e.preventDefault();
+            var id = $(this).data('id');
+            swal({
+                title: "Excluir pedido?",
+                text: "Esta ação não pode ser desfeita. Todos os dados do pedido serão removidos.",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#DD6B55",
+                confirmButtonText: "Sim, excluir!",
+                cancelButtonText: "Cancelar",
+                closeOnConfirm: false
+            }, function(){
+                $.ajax({
+                    url: '<?php echo base_url(array("loja", "excluir-pedido")); ?>',
+                    type: 'POST',
+                    data: {id: id},
+                    dataType: 'json',
+                    success: function(resp){
+                        if(resp.type == 'success'){
+                            swal({title: "Excluído!", text: resp.message, type: "success"}, function(){
+                                location.reload();
+                            });
+                        }else{
+                            swal({title: "Erro", text: resp.message, type: "error"});
+                        }
+                    },
+                    error: function(){
+                        swal({title: "Erro", text: "Falha na comunicação com o servidor.", type: "error"});
+                    }
+                });
+            });
+        });
+
 
         // $(".editar-pedido").on('click', function(){
         //     alert('asdfasdf')

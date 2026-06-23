@@ -53,14 +53,28 @@
               <div class="col-md-7">
                 <div class="form-group">
                   <label class="control-label">Vendedor:</label>
-                  <select required="" class="form-control" name="vendedores_id">
-                    <option value="">Selecione</option>
-
-                    <?php foreach ($vendedores as $key => $vendedor): ?>
-                      <option <?php if (isset($pedido) && $vendedor->id == $pedido->vendedores_id){echo 'selected';} ?> value="<?php echo $vendedor->id ?>"><?php echo $vendedor->descricao; ?></option>
-                    <?php endforeach ?>
-                    
-                  </select>
+                  <?php
+                    $vendedor_sel = null;
+                    foreach ($vendedores as $v) {
+                      if (strcasecmp(trim($v->descricao), trim($usuario->nome)) === 0) {
+                        $vendedor_sel = $v;
+                        break;
+                      }
+                    }
+                  ?>
+                  <?php if ($vendedor_sel): ?>
+                    <select class="form-control" id="vendedores_id_select" disabled>
+                      <option value="<?php echo $vendedor_sel->id ?>" selected><?php echo $vendedor_sel->descricao; ?></option>
+                    </select>
+                    <input type="hidden" name="vendedores_id" value="<?php echo $vendedor_sel->id ?>">
+                  <?php else: ?>
+                    <select required="" class="form-control" name="vendedores_id" id="vendedores_id_select">
+                      <option value="">Selecione</option>
+                      <?php foreach ($vendedores as $key => $vendedor): ?>
+                        <option <?php if (isset($pedido) && $vendedor->id == $pedido->vendedores_id){echo 'selected';} ?> value="<?php echo $vendedor->id ?>"><?php echo $vendedor->descricao; ?></option>
+                      <?php endforeach ?>
+                    </select>
+                  <?php endif; ?>
                 </div>
               </div>
 
@@ -904,7 +918,7 @@
     <div class="row taxa-preview-row" style="display:none; margin-bottom: 15px; margin-top: -5px;">
         <div class="col-sm-12">
             <div style="background-color: #e8eaf6; border: 1px solid #3f51b5; border-radius: 4px; padding: 6px 10px; font-size: 12px;">
-                <i class="fa fa-calculator"></i> <strong>Taxa maquininha estimada:</strong>
+                <i class="fa fa-calculator"></i> <strong>Taxas estimadas:</strong>
                 <span class="taxa-preview-text" style="margin-left: 10px;"></span>
             </div>
         </div>
@@ -1196,7 +1210,7 @@
     <div class="row taxa-preview-row" style="display:none; margin-bottom: 15px; margin-top: -5px;">
         <div class="col-sm-12">
             <div style="background-color: #e8eaf6; border: 1px solid #3f51b5; border-radius: 4px; padding: 6px 10px; font-size: 12px;">
-                <i class="fa fa-calculator"></i> <strong>Taxa maquininha estimada:</strong>
+                <i class="fa fa-calculator"></i> <strong>Taxas estimadas:</strong>
                 <span class="taxa-preview-text" style="margin-left: 10px;"></span>
             </div>
         </div>
@@ -1557,12 +1571,22 @@ function modelo_valor(elementos){
     }
 
 
+    var auth_desconto_ok = false;
+    var desconto_pendente_valor = 0;
+    var auth_em_progresso = false;
+
     function calcula_pedito_total(){
+
+      if(auth_em_progresso) return;
 
       var valor_produtos = $('#valor').val();
       var frete = $('#valor_frete').val();
       var desconto = $('#valor_desconto').val();
       var tipo_desconto_atual = $('#tipo_desconto').val();
+
+      if(auth_desconto_ok && desconto != desconto_pendente_valor){
+        auth_desconto_ok = false;
+      }
 
       //VALIDANDO DESCONTO DO USUARIO
       if(desconto > 0){
@@ -1576,10 +1600,22 @@ function modelo_valor(elementos){
           }else{
             var pct_aplicado = (parseFloat(desconto) / (parseFloat(valor_produtos) + parseFloat(frete))) * 100;
           }
-          if(pct_aplicado > limite_pct){
-            swal('Desconto não permitido', pct_aplicado.toFixed(1) + '% excede o limite de ' + limite_pct.toFixed(0) + '%', 'error');
-            $('#valor_desconto').val(0);
+          if(pct_aplicado > limite_pct && !auth_desconto_ok){
+            desconto_pendente_valor = desconto;
             var desconto_geral = 0;
+            var total_geral = parseFloat(valor_produtos) + parseFloat(frete) - 0;
+            $('#valor_total').val(total_geral.toFixed(2));
+
+            auth_em_progresso = true;
+            $('#valor_desconto').val(0);
+
+            $('#auth-pct').text(pct_aplicado.toFixed(1) + '%');
+            $('#auth-limite').text(limite_pct.toFixed(0) + '%');
+            $('#auth-section-solicitar').show();
+            $('#auth-section-codigo').hide();
+            $('#auth-error').hide();
+            $('#modal-auth-desconto').modal('show');
+            return;
           }else{
             if(tipo_desconto_atual == 'porcentagem'){
               var desconto_geral = (parseFloat(valor_produtos) + parseFloat(frete)) * parseFloat(desconto) / 100;
@@ -1595,18 +1631,139 @@ function modelo_valor(elementos){
           }
         }
 
-      }else{    
+      }else{
         var desconto_geral = 0;
       }
 
-      
-
-
       var total_geral = parseFloat(valor_produtos) + parseFloat(frete) - parseFloat(desconto_geral);
-
       $('#valor_total').val(total_geral.toFixed(2));
 
     }
+
+  </script>
+
+  <div class="modal fade" id="modal-auth-desconto" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+          <h4 class="modal-title">Autorizacao de Desconto</h4>
+        </div>
+        <div class="modal-body">
+          <div id="auth-section-solicitar">
+            <p>Desconto de <strong id="auth-pct"></strong> excede o limite de <strong id="auth-limite"></strong>.</p>
+            <p>Clique no botao abaixo para enviar um codigo de autorizacao via WhatsApp aos gerentes.</p>
+          </div>
+          <div id="auth-section-codigo" style="display:none;">
+            <p>Codigo enviado via WhatsApp para os gerentes.</p>
+            <p>Digite o codigo recebido:</p>
+            <input type="text" id="auth-codigo-input" class="form-control" style="text-transform:uppercase; font-size:18px; letter-spacing:3px; text-align:center;" placeholder="CODIGO" maxlength="6">
+          </div>
+          <div id="auth-error" class="alert alert-danger" style="display:none; margin-top:10px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="btn-solicitar-codigo">Solicitar Codigo</button>
+          <button type="button" class="btn btn-success" id="btn-validar-codigo" style="display:none;">Validar Codigo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+  $(function() {
+
+    $('#btn-solicitar-codigo').on('click', function(){
+      var btn = $(this);
+      var pct = $('#auth-pct').text().replace('%','');
+      btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Enviando...');
+      $('#auth-error').hide();
+
+      $.ajax({
+        url: '<?php echo base_url(["site/solicitar-codigo-desconto"]) ?>',
+        type: 'POST',
+        data: { pct: pct },
+        dataType: 'json',
+        success: function(result){
+          btn.prop('disabled', false).html('Solicitar Codigo');
+          if(result.success){
+            $('#auth-section-solicitar').hide();
+            $('#auth-section-codigo').show();
+            $('#btn-solicitar-codigo').hide();
+            $('#btn-validar-codigo').show();
+            $('#auth-codigo-input').focus();
+          } else {
+            $('#auth-error').text(result.message || 'Falha ao enviar codigo.').show();
+          }
+        },
+        error: function(){
+          btn.prop('disabled', false).html('Solicitar Codigo');
+          $('#auth-error').text('Falha de comunicacao com o servidor.').show();
+        }
+      });
+    });
+
+    $('#btn-validar-codigo').on('click', function(){
+      var btn = $(this);
+      var codigo = $('#auth-codigo-input').val().trim();
+      $('#auth-error').hide();
+
+      if(!codigo){
+        $('#auth-error').text('Digite o codigo!').show();
+        return;
+      }
+
+      btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Validando...');
+
+      $.ajax({
+        url: '<?php echo base_url(["site/validar-codigo-desconto"]) ?>',
+        type: 'POST',
+        data: { codigo: codigo },
+        dataType: 'json',
+        success: function(res){
+          btn.prop('disabled', false).html('Validar Codigo');
+          if(res.success){
+            $('#modal-auth-desconto').modal('hide');
+            auth_desconto_ok = true;
+            auth_em_progresso = false;
+            swal('Autorizado!', 'Desconto liberado com sucesso.', 'success');
+            $('#valor_desconto').val(desconto_pendente_valor);
+            calcula_pedito_total();
+          } else {
+            $('#auth-error').text(res.message || 'Codigo invalido.').show();
+            $('#auth-codigo-input').val('').focus();
+          }
+        },
+        error: function(){
+          btn.prop('disabled', false).html('Validar Codigo');
+          $('#auth-error').text('Falha na validacao. Tente novamente.').show();
+        }
+      });
+    });
+
+    $('#modal-auth-desconto').on('hidden.bs.modal', function(){
+      if(!auth_desconto_ok){
+        auth_em_progresso = false;
+        $('#valor_desconto').val(0);
+        calcula_pedito_total();
+      }
+      $('#auth-section-solicitar').show();
+      $('#auth-section-codigo').hide();
+      $('#btn-solicitar-codigo').show();
+      $('#btn-validar-codigo').hide();
+      $('#auth-error').hide();
+      $('#auth-codigo-input').val('');
+    });
+
+    $('#auth-codigo-input').on('keyup', function(e){
+      if(e.keyCode === 13){ $('#btn-validar-codigo').click(); }
+    });
+
+  });
+
+  </script>
+
+
 
 
 
@@ -1706,7 +1863,7 @@ $('.data_mask').datepicker({
 
     // $('.class_valor').mask('00000,00', {reverse: true});
 
-    $("[name=vendedores_id]").select2({
+    $("#vendedores_id_select").select2({
         placeholder: "Selecione um vendedor",
         allowClear: true
     });
@@ -1831,12 +1988,14 @@ $('.data_mask').datepicker({
         }
 
         var percentual = null;
+        var percentual_antecipacao = null;
         var descricao = '';
 
         if (taxasId) {
             for (var i = 0; i < taxasMaquininhas.length; i++) {
                 if (String(taxasMaquininhas[i].id) === String(taxasId)) {
                     percentual = parseFloat(taxasMaquininhas[i][campoTaxa]);
+                    percentual_antecipacao = parseFloat(taxasMaquininhas[i].taxa_antecipacao);
                     descricao = taxasMaquininhas[i].grupo_bandeira;
                     break;
                 }
@@ -1847,6 +2006,7 @@ $('.data_mask').datepicker({
             for (var j = 0; j < maquininhasData.length; j++) {
                 if (String(maquininhasData[j].id) === String(maquininhaId)) {
                     percentual = parseFloat(maquininhasData[j][campoTaxa]);
+                    percentual_antecipacao = parseFloat(maquininhasData[j].taxa_antecipacao);
                     descricao = maquininhasData[j].nome;
                     break;
                 }
@@ -1859,10 +2019,14 @@ $('.data_mask').datepicker({
         }
 
         var taxaValor = Math.round(valor * percentual) / 100;
-        $preview.find('.taxa-preview-text').html(
-            descricao + ' | Taxa: ' + percentual.toFixed(2) + '% | ' +
-            'Valor: <strong>R$ ' + taxaValor.toFixed(2).replace('.', ',') + '</strong>'
-        );
+        var html = descricao + ' | Maquininha: ' + percentual.toFixed(2) + '% = <strong>R$ ' + taxaValor.toFixed(2).replace('.', ',') + '</strong>';
+
+        if (percentual_antecipacao && !isNaN(percentual_antecipacao) && percentual_antecipacao > 0 && parseInt(formaPgto) !== 2) {
+            var antecipacaoValor = Math.round(valor * percentual_antecipacao) / 100;
+            html += ' | Antecipação: ' + percentual_antecipacao.toFixed(2) + '% = <strong>R$ ' + antecipacaoValor.toFixed(2).replace('.', ',') + '</strong>';
+        }
+
+        $preview.find('.taxa-preview-text').html(html);
         $preview.show();
     }
 
@@ -2454,6 +2618,7 @@ $('.data_mask').datepicker({
       {
 
         var desconto_atual = $('#tipo_desconto').val();
+        auth_desconto_ok = false;
 
  
 

@@ -78,6 +78,7 @@ class Loja_maquininhas_cartao extends TEC_Controller {
             'taxa_credito_2x' => 0,
             'taxa_credito_3x' => 0,
             'taxa_credito_4x' => 0,
+            'taxa_antecipacao' => 0,
         );
 
         $dados = array(
@@ -89,6 +90,7 @@ class Loja_maquininhas_cartao extends TEC_Controller {
             'taxa_credito_2x' => $primeira_taxa['taxa_credito_2x'],
             'taxa_credito_3x' => $primeira_taxa['taxa_credito_3x'],
             'taxa_credito_4x' => $primeira_taxa['taxa_credito_4x'],
+            'taxa_antecipacao' => $primeira_taxa['taxa_antecipacao'],
             'ativo' => $this->input->post('ativo') ? 1 : 0,
         );
 
@@ -150,6 +152,7 @@ class Loja_maquininhas_cartao extends TEC_Controller {
                 'taxa_credito_2x' => $this->decimal_post_array('taxa_credito_2x', $key),
                 'taxa_credito_3x' => $this->decimal_post_array('taxa_credito_3x', $key),
                 'taxa_credito_4x' => $this->decimal_post_array('taxa_credito_4x', $key),
+                'taxa_antecipacao' => $this->decimal_post_array('taxa_antecipacao', $key),
             );
         }
 

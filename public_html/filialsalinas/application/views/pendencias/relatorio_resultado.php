@@ -18,6 +18,13 @@
     .breakdown-box h5 { margin-top: 0; font-weight: 600; font-size: 14px; color: #555; }
     .breakdown-box table { margin-bottom: 0; font-size: 12px; }
     .breakdown-box table td, .breakdown-box table th { padding: 4px 8px; border-top: none; border-bottom: 1px solid #eee; }
+    .btn-toggle-itens { cursor: pointer; background: none; border: none; padding: 0; font-size: 12px; color: #1976d2; }
+    .btn-toggle-itens:hover { color: #0d47a1; }
+    .row-itens { display: none; }
+    .row-itens td { padding: 0 !important; border-top: none !important; }
+    .row-itens .itens-inner { padding: 8px 15px; background: #f5f5f5; border-radius: 4px; margin: 4px 10px; }
+    .row-itens .itens-inner table { font-size: 11px; }
+    .row-itens .itens-inner table th { color: #888; font-weight: 600; }
 </style>
 
 <div class="wrapper wrapper-content animated fadeInRight" id="tabela_resultados">
@@ -74,6 +81,7 @@
                                         $nomes_forma = array(1=>'Dinheiro',9=>'Pix',2=>'Débito',3=>'Crédito 1x',4=>'Crédito 2x',5=>'Crédito 3x',6=>'Crédito 4x',7=>'Duplicata',8=>'Cheque');
 
                                         if(!empty($pendencias)):
+                                            $pedido_anterior = null;
                                             foreach($pendencias as $p):
                                                 $dias = (strtotime($hoje) - strtotime($p->data_vencimento)) / 86400;
                                                 if($dias > 0) $total_vencido += $p->valor;
@@ -84,9 +92,44 @@
                                                 else $badge = '<span class="badge badge-futuro">'.abs(floor($dias)).'d</span>';
 
                                                 $forma = isset($nomes_forma[$p->forma_pgto]) ? $nomes_forma[$p->forma_pgto] : '-';
+
+                                                $tem_itens = isset($itens_pedidos[$p->pedido_cod]) && !empty($itens_pedidos[$p->pedido_cod]);
+                                                $is_novo_pedido = ($p->pedido_cod !== $pedido_anterior);
                                         ?>
+                                        <?php if($is_novo_pedido && $pedido_anterior !== null && $tem_itens): ?>
+                                        <tr class="row-itens" id="itens-<?php echo $pedido_anterior; ?>">
+                                            <td colspan="7">
+                                                <div class="itens-inner">
+                                                    <table class="table table-condensed">
+                                                        <thead><tr><th>Produto</th><th>Qtd</th><th>Valor Total</th></tr></thead>
+                                                        <tbody>
+                                                            <?php foreach($itens_pedidos[$pedido_anterior] as $item): ?>
+                                                            <tr>
+                                                                <td><?php echo $item->produto_nome ? $item->produto_nome : 'Produto #'.$item->produtos_id; ?></td>
+                                                                <td><?php echo $item->quantidade; ?></td>
+                                                                <td>R$ <?php echo number_format($item->valor_total, 2, ',', '.'); ?></td>
+                                                            </tr>
+                                                            <?php endforeach; ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <?php endif; ?>
+
+                                        <?php if($is_novo_pedido && $pedido_anterior !== null && !isset($itens_pedidos[$pedido_anterior]) && isset($itens_pedidos[$p->pedido_cod])): ?>
+                                        <?php endif; ?>
+
                                         <tr>
-                                            <td>#<?php echo $p->pedido_cod; ?></td>
+                                            <td>
+                                                <?php if($tem_itens): ?>
+                                                <button type="button" class="btn-toggle-itens" onclick="$('#itens-<?php echo $p->pedido_cod; ?>').toggle()">
+                                                    <i class="fa fa-plus-circle"></i> #<?php echo $p->pedido_cod; ?>
+                                                </button>
+                                                <?php else: ?>
+                                                #<?php echo $p->pedido_cod; ?>
+                                                <?php endif; ?>
+                                            </td>
                                             <td><?php echo $p->cliente; ?></td>
                                             <td><?php echo date('d/m/Y', strtotime($p->data_vencimento)); ?></td>
                                             <td>R$ <?php echo number_format($p->valor, 2, ',', '.'); ?></td>
@@ -94,7 +137,31 @@
                                             <td><?php echo $forma; ?></td>
                                             <td><?php echo $p->vendedor; ?></td>
                                         </tr>
-                                        <?php endforeach; else: ?>
+                                        <?php $pedido_anterior = $p->pedido_cod; ?>
+                                        <?php endforeach; ?>
+
+                                        <?php if($pedido_anterior !== null && isset($itens_pedidos[$pedido_anterior])): ?>
+                                        <tr class="row-itens" id="itens-<?php echo $pedido_anterior; ?>">
+                                            <td colspan="7">
+                                                <div class="itens-inner">
+                                                    <table class="table table-condensed">
+                                                        <thead><tr><th>Produto</th><th>Qtd</th><th>Valor Total</th></tr></thead>
+                                                        <tbody>
+                                                            <?php foreach($itens_pedidos[$pedido_anterior] as $item): ?>
+                                                            <tr>
+                                                                <td><?php echo $item->produto_nome ? $item->produto_nome : 'Produto #'.$item->produtos_id; ?></td>
+                                                                <td><?php echo $item->quantidade; ?></td>
+                                                                <td>R$ <?php echo number_format($item->valor_total, 2, ',', '.'); ?></td>
+                                                            </tr>
+                                                            <?php endforeach; ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <?php endif; ?>
+
+                                        <?php else: ?>
                                         <tr><td colspan="7" class="text-center text-muted">Nenhuma pendência encontrada</td></tr>
                                         <?php endif; ?>
                                     </tbody>

@@ -154,6 +154,7 @@ class Maquininhas_cartao_model extends CI_Model {
                 'taxa_credito_2x' => $taxa['taxa_credito_2x'],
                 'taxa_credito_3x' => $taxa['taxa_credito_3x'],
                 'taxa_credito_4x' => $taxa['taxa_credito_4x'],
+                'taxa_antecipacao' => $taxa['taxa_antecipacao'],
                 'ativo' => 1,
                 'updated_at' => date('Y-m-d H:i:s'),
                 'deleted_at' => null,

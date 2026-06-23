@@ -29,6 +29,15 @@ class Loja_relatorio_pendencias extends TEC_Controller {
             $data['pendencias'] = $this->pedidos_model->get_pendencias($inicio, $fim);
             $data['hoje'] = date('Y-m-d');
 
+            $pedidos_ids = array();
+            if(!empty($data['pendencias'])){
+                foreach($data['pendencias'] as $p){
+                    $pedidos_ids[] = $p->pedido_cod;
+                }
+                $pedidos_ids = array_unique($pedidos_ids);
+            }
+            $data['itens_pedidos'] = $this->pedidos_model->get_itens_pedidos_lote($pedidos_ids);
+
             $data['resultado'] = $this->load->view('pendencias/relatorio_resultado', $data, true);
             $this->montaTela('pendencias/relatorio', $data);
         }

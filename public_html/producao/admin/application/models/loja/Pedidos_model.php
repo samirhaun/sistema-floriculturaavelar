@@ -346,6 +346,7 @@ class Pedidos_model extends CI_Model {
         $this->db->join('clientes', 'clientes.id=pedidos.clientes_id','left');
         $this->db->join('eventos', 'eventos.id=pedidos.eventos_id','left');
         $this->db->join('vendedores', 'vendedores.id=pedidos.vendedores_id','left');
+        $this->_excluir_pedidos_cancelados();
         // $this->db->where('pedidos.valor_entrada <=', 0);
 
         if($dtreferencia == 'pgto'):
@@ -417,6 +418,7 @@ class Pedidos_model extends CI_Model {
             $this->db->join('clientes', 'clientes.id=pedidos.clientes_id','left');
             $this->db->join('eventos', 'eventos.id=pedidos.eventos_id','left');
             $this->db->join('vendedores', 'vendedores.id=pedidos.vendedores_id','left');
+            $this->_excluir_pedidos_cancelados();
 
             $this->db->where('pedidos.data_pgto_entrada BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
             // $this->db->where('pedidos.data_pago', null);
@@ -571,6 +573,7 @@ class Pedidos_model extends CI_Model {
         $this->db->join('clientes', 'clientes.id=pedidos.clientes_id','left');
         $this->db->join('eventos', 'eventos.id=pedidos.eventos_id','left');
         $this->db->join('vendedores', 'vendedores.id=pedidos.vendedores_id','left');
+        $this->_excluir_pedidos_cancelados();
         // $this->db->where('pedidos.valor_entrada <=', 0);
 
         if($dtreferencia == 'pgto'):
@@ -761,6 +764,7 @@ class Pedidos_model extends CI_Model {
         $this->db->join('pedido_produto', 'pedido_produto.pedidos_id = pedidos.id');
         $this->db->join('produtos', 'produtos.id = pedido_produto.produtos_id');
         $this->db->join('categorias', 'categorias.id = produtos.categorias_id');
+        $this->_excluir_pedidos_cancelados();
         if($dtreferencia == 'pgto'):
             $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         else:
@@ -779,6 +783,7 @@ class Pedidos_model extends CI_Model {
         $this->db->join('pedido_produto', 'pedido_produto.pedidos_id = pedidos.id');
         $this->db->join('produtos', 'produtos.id = pedido_produto.produtos_id');
         $this->db->join('categorias', 'categorias.id = produtos.categorias_id');
+        $this->_excluir_pedidos_cancelados();
         if($dtreferencia == 'pgto'):
             $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         else:
@@ -819,6 +824,8 @@ class Pedidos_model extends CI_Model {
     }
 
     private function _apply_filtros_receitas($inicio, $fim, $origem, $vendedor, $dtreferencia, $situacaopgto, $entregador, $formapgto){
+        $this->_excluir_pedidos_cancelados();
+
         if($dtreferencia == 'pgto'):
             $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         elseif($dtreferencia == 'emissao'): 
@@ -841,6 +848,10 @@ class Pedidos_model extends CI_Model {
         if($vendedor != 'all'){
             $this->db->where('pedidos.vendedores_id', $vendedor);
         }
+    }
+
+    private function _excluir_pedidos_cancelados(){
+        $this->db->where_not_in('pedidos.status_pedido', array(4, 5));
     }
 
     private function _apply_filtros_despesas($inicio, $fim, $plano_conta, $referencia, $formapgto, $situacaopgto){
@@ -881,6 +892,7 @@ class Pedidos_model extends CI_Model {
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
         $this->db->join('pedido_produto', 'pedido_produto.pedidos_id = pedidos.id');
+        $this->_excluir_pedidos_cancelados();
         $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         $this->db->where('contas_receber.status', 1);
         $row = $this->db->get()->row();
@@ -891,6 +903,8 @@ class Pedidos_model extends CI_Model {
 
         $this->db->select('SUM(contas_receber.valor) as total');
         $this->db->from('contas_receber');
+        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
+        $this->_excluir_pedidos_cancelados();
         $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         $this->db->where('contas_receber.status', 1);
         $row2 = $this->db->get()->row();
@@ -906,6 +920,7 @@ class Pedidos_model extends CI_Model {
         $this->db->join('pedido_produto', 'pedido_produto.pedidos_id = pedidos.id');
         $this->db->join('produtos', 'produtos.id = pedido_produto.produtos_id');
         $this->db->join('categorias', 'categorias.id = produtos.categorias_id', 'left');
+        $this->_excluir_pedidos_cancelados();
         $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         $this->db->where('contas_receber.status', 1);
         $this->db->group_by('produtos.id, produtos.titulo, categorias.nome');
@@ -920,6 +935,7 @@ class Pedidos_model extends CI_Model {
         $this->db->join('clientes', 'clientes.id = pedidos.clientes_id', 'left');
         $this->db->join('pedido_produto', 'pedido_produto.pedidos_id = pedidos.id');
         $this->db->join('produtos', 'produtos.id = pedido_produto.produtos_id');
+        $this->_excluir_pedidos_cancelados();
         $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         $this->db->where('contas_receber.status', 1);
         $this->db->order_by('produtos.titulo, pedidos.id');
@@ -935,6 +951,7 @@ class Pedidos_model extends CI_Model {
         $this->db->join('clientes', 'clientes.id = pedidos.clientes_id', 'left');
         $this->db->join('vendedores', 'vendedores.id = pedidos.vendedores_id', 'left');
         $this->db->where('contas_receber.status', 0);
+        $this->db->where_not_in('pedidos.status_pedido', array(4, 5));
         if($inicio && $fim){
             $this->db->where('contas_receber.data_vencimento BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         }
@@ -947,9 +964,11 @@ class Pedidos_model extends CI_Model {
         $totais->total = 0;
         $totais->qtd = 0;
 
-        $this->db->select('SUM(valor) as total, COUNT(*) as qtd');
+        $this->db->select('SUM(contas_receber.valor) as total, COUNT(*) as qtd');
         $this->db->from('contas_receber');
+        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
         $this->db->where('contas_receber.status', 0);
+        $this->db->where_not_in('pedidos.status_pedido', array(4, 5));
         if($inicio && $fim){
             $this->db->where('contas_receber.data_vencimento BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         }
@@ -959,6 +978,28 @@ class Pedidos_model extends CI_Model {
             $totais->qtd = $row->qtd;
         }
         return $totais;
+    }
+
+    function get_itens_pedidos_lote($pedidos_ids){
+        if(empty($pedidos_ids)){
+            return array();
+        }
+        $this->db->select('pedido_produto.*, produtos.titulo as produto_nome');
+        $this->db->from('pedido_produto');
+        $this->db->join('produtos', 'produtos.id = pedido_produto.produtos_id', 'left');
+        $this->db->where_in('pedido_produto.pedidos_id', $pedidos_ids);
+        $query = $this->db->get();
+        $itens = array();
+        if($query->num_rows() > 0){
+            foreach($query->result() as $item){
+                $pedidos_id = $item->pedidos_id;
+                if(!isset($itens[$pedidos_id])){
+                    $itens[$pedidos_id] = array();
+                }
+                $itens[$pedidos_id][] = $item;
+            }
+        }
+        return $itens;
     }
 
 }

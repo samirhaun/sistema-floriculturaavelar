@@ -74,7 +74,7 @@
                                 $tem_producao = in_array('producao', $contextos_usuario, true);
                                 $tem_salinas = in_array('salinas', $contextos_usuario, true);
                             ?>
-                            <div class="col-sm-6 col-xs-12">
+<div class="col-sm-6 col-xs-12">
                                 <div class="form-group">
                                     <label class="control-label">Acesso aos sistemas:</label>
                                     <div class="checkbox checkbox-primary">
@@ -87,6 +87,18 @@
                                         <input id="contexto-salinas" type="checkbox" name="contextos[]" value="salinas" data-contexto="salinas" <?php echo $tem_salinas ? 'checked="checked"' : '' ?>>
                                         <label for="contexto-salinas">
                                             Salinas
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-sm-3 col-xs-6">
+                                <div class="form-group">
+                                    <label class="control-label">Permissões especiais:</label>
+                                    <div class="checkbox checkbox-primary">
+                                        <input id="pode_excluir_pedido" type="checkbox" name="pode_excluir_pedido" value="1" <?php echo (isset($usuario) && $usuario->pode_excluir_pedido) ? 'checked="checked"' : '' ?>>
+                                        <label for="pode_excluir_pedido">
+                                            Pode excluir pedidos
                                         </label>
                                     </div>
                                 </div>

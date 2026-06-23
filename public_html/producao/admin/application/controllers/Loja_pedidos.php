@@ -47,11 +47,14 @@ class Loja_pedidos extends TEC_Controller {
 
     public function lista()
     {
-        
+
         //CHECK HABILIDADE
         if(!check_habilidade('visualizar_pedidos')): echo 'Acesso negado.'; exit; endif;
 
         $data['pedidos'] =  $this->pedidos_model->get_pedidos();
+
+        $usuario_logado = $this->db->select('pode_excluir_pedido')->from('usuarios')->where('id', $_SESSION['usuario']->id)->get()->row();
+        $pode_excluir = $usuario_logado && $usuario_logado->pode_excluir_pedido;
 
          
 
@@ -154,6 +157,12 @@ class Loja_pedidos extends TEC_Controller {
                                                         $pedido['acoes'] .= '
                                                             <a href="'.base_url(array('site', 'editar-pedido')).'?id='.$row->id.'" class="btn btn-default btn-icon-action" data-toggle="tooltip" data-placement="bottom" title="Editar"><i class="fa fa-pencil-square-o"></i></a>
                                                             ';
+
+                                                        if ($pode_excluir && ($row->status_pedido == '4' || $row->status_pedido == '5')):
+                                                            $pedido['acoes'] .= '
+                                                            <a href="javascript:void(0);" class="btn btn-default btn-icon-action excluir-pedido" data-id="'.$row->id.'" data-toggle="tooltip" data-placement="bottom" title="Excluir pedido"><i class="fa fa-trash text-danger"></i></a>
+                                                            ';
+                                                        endif;
 
 
 
@@ -307,6 +316,59 @@ class Loja_pedidos extends TEC_Controller {
             echo json_encode(TRUE);
         }else{
             echo json_encode(FALSE);
+        }
+    }
+
+    public function excluir_pedido(){
+        if(!$this->input->is_ajax_request()){
+            echo json_encode(array('type'=>'error','title'=>'Exclusão','message'=>'Requisição inválida'));
+            return;
+        }
+
+        $usuario = $this->db->select('pode_excluir_pedido')->from('usuarios')->where('id', $_SESSION['usuario']->id)->get()->row();
+        if(!$usuario || !$usuario->pode_excluir_pedido){
+            echo json_encode(array('type'=>'error','title'=>'Exclusão','message'=>'Você não tem permissão para excluir pedidos'));
+            return;
+        }
+
+        $id = $this->input->post('id');
+        if(!$id){
+            echo json_encode(array('type'=>'error','title'=>'Exclusão','message'=>'Pedido não informado'));
+            return;
+        }
+
+        $pedido = $this->pedidos_model->busca_pedido($id);
+        if(!$pedido){
+            echo json_encode(array('type'=>'error','title'=>'Exclusão','message'=>'Pedido não encontrado'));
+            return;
+        }
+
+        if($pedido->status_pedido != 4 && $pedido->status_pedido != 5){
+            echo json_encode(array('type'=>'error','title'=>'Exclusão','message'=>'Apenas pedidos cancelados podem ser excluídos'));
+            return;
+        }
+
+        $this->db->trans_start();
+
+        $this->db->where('contas_receber_id', $id);
+        $this->db->where_in('origem', array('taxa_maquininha', 'taxa_antecipacao'));
+        $this->db->delete('contas_pagar');
+
+        $this->db->where('pedidos_id', $id);
+        $this->db->delete('contas_receber');
+
+        $this->db->where('pedidos_id', $id);
+        $this->db->delete('pedido_produto');
+
+        $this->db->where('id', $id);
+        $this->db->delete('pedidos');
+
+        $this->db->trans_complete();
+
+        if($this->db->trans_status()){
+            echo json_encode(array('type'=>'success','title'=>'Exclusão','message'=>'Pedido excluído com sucesso!'));
+        }else{
+            echo json_encode(array('type'=>'error','title'=>'Exclusão','message'=>'Erro ao excluir pedido'));
         }
     }
 
