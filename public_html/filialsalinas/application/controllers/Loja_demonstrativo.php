@@ -20,6 +20,8 @@ class Loja_demonstrativo extends TEC_Controller {
        
 
     function demonstrativo(){
+        // $data['convenios'] = $this->faturamento_model->get_convenios();
+        // $data['procedimentos'] = $this->faturamento_model->get_procedimentos();
         $data['vendedores'] = $this->pedidos_model->get_vendedores();
         $data['entregadores'] = $this->pedidos_model->get_entregadores();
         $data['plano_contas'] = $this->contas_pagar_model->get_planos_conta();
@@ -42,6 +44,7 @@ class Loja_demonstrativo extends TEC_Controller {
             $data['filtro_forma_pgto'] = $this->input->post('forma_pgto');
             $data['filtro_exibir_despesas'] = $this->input->post('exibir_despesas');
 
+            //BUSCANDO OS PROCEDIMENTOS REALIZADOS
             if($data['filtro_exibir_receitas'] == 1):
 
                 $data['pedidos'] = $this->pedidos_model
@@ -53,6 +56,10 @@ class Loja_demonstrativo extends TEC_Controller {
                                                                 ,$data['filtro_situacao_pgto']
                                                                 ,$data['filtro_entregador']
                                                                 ,$data['filtro_forma_pgto']);
+
+                                                            //       echo '<pre>';
+                                                            // print_r($data['pedidos']);
+                                                            // exit;
 
             endif;
 
@@ -70,13 +77,27 @@ class Loja_demonstrativo extends TEC_Controller {
 
 
           endif;                          
+                                                            // echo '<pre>';
+                                                            // print_r($data['contas_pagar']);
+                                                            // exit;
+        
 
             $data['vendedores'] = $this->pedidos_model->get_vendedores();
+
             $data['entregadores'] = $this->pedidos_model->get_entregadores();
+            
             $data['plano_contas'] = $this->contas_pagar_model->get_planos_conta();
+
             $data['resultado'] = $this->load->view('pedidos/relatorio_resultado', $data, true);
+            
+
+          
+            
             $this->montaTela('pedidos/relatorio',$data);
+
+
         }
+
     }
 
 
@@ -89,6 +110,8 @@ class Loja_demonstrativo extends TEC_Controller {
                 'submenu' => 'loja-demonstrativo-novo'
                 )
             );
+        // $data['convenios'] = $this->faturamento_model->get_convenios();
+        // $data['procedimentos'] = $this->faturamento_model->get_procedimentos();
         $data['vendedores'] = $this->pedidos_model->get_vendedores();
         $data['entregadores'] = $this->pedidos_model->get_entregadores();
         $data['plano_contas'] = $this->contas_pagar_model->get_planos_conta();
@@ -113,7 +136,7 @@ class Loja_demonstrativo extends TEC_Controller {
             $data['filtro_referencia'] = $this->input->post('referencia');
             $data['filtro_situacao_pgto'] = $this->input->post('situacao_pgto') ?: array('all');
             $data['filtro_entregador'] = $this->input->post('entregador') ?: 'all';
-            $data['filtro_forma_pgto'] = $this->input->post('forma_pgto');
+            $data['filtro_forma_pgto'] = $this->input->post('forma_pgto') ?: array();
             $data['filtro_exibir_despesas'] = $this->input->post('exibir_despesas');
 
             $inicio = inverteData($data['filtro_inicio'],'-');

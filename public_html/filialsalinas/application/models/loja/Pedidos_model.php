@@ -394,9 +394,13 @@ class Pedidos_model extends CI_Model {
             $this->db->where('pedidos.entregadores_id', $entregador);
          }
 
-         //POR FORMA DE PGTO
+//POR FORMA DE PGTO
         if(!empty($formapgto)){
-            $this->db->where('pedidos.forma_pagamento_balcao', $formapgto);
+            if(is_array($formapgto)){
+                $this->db->where_in('contas_pagar.forma_pgto', $formapgto);
+            } else {
+                $this->db->where('contas_pagar.forma_pgto', $formapgto);
+            }
          }
 
 
@@ -600,10 +604,14 @@ class Pedidos_model extends CI_Model {
 
          }
 
-         //POR FORMA DE PGTO
-        if(!empty($formapgto)){
-            $this->db->where('contas_receber.forma_pgto', $formapgto);
-         }
+//POR FORMA DE PGTO
+         if(!empty($formapgto)){
+             if(is_array($formapgto)){
+                 $this->db->where_in('contas_receber.forma_pgto', $formapgto);
+             } else {
+                 $this->db->where('contas_receber.forma_pgto', $formapgto);
+             }
+          }
 
          //POR VENDEDOR
         if($vendedor != 'all'){
@@ -708,9 +716,8 @@ class Pedidos_model extends CI_Model {
     }
 
     function get_demonstrativo_pagar_novo_count($inicio, $fim, $origem, $vendedor, $plano_conta, $referencia, $formapgto, $situacaopgto){
-        $this->db->from('contas_pagar');
         $this->_apply_filtros_despesas($inicio, $fim, $plano_conta, $referencia, $formapgto, $situacaopgto);
-        return $this->db->count_all_results();
+        return $this->db->count_all_results('contas_pagar');
     }
 
     function get_demonstrativo_pagar_novo_paginated($inicio, $fim, $origem, $vendedor, $plano_conta, $referencia, $formapgto, $situacaopgto, $limit, $offset){
@@ -843,7 +850,11 @@ class Pedidos_model extends CI_Model {
         }
 
         if(!empty($formapgto)){
-            $this->db->where('contas_receber.forma_pgto', $formapgto);
+            if(is_array($formapgto)){
+                $this->db->where_in('contas_receber.forma_pgto', $formapgto);
+            } else {
+                $this->db->where('contas_receber.forma_pgto', $formapgto);
+            }
         }
 
         if($vendedor != 'all'){
@@ -877,7 +888,11 @@ class Pedidos_model extends CI_Model {
         }
 
         if(!empty($formapgto)){
-            $this->db->where('contas_pagar.forma_pgto', $formapgto);
+            if(is_array($formapgto)){
+                $this->db->where_in('contas_pagar.forma_pgto', $formapgto);
+            } else {
+                $this->db->where('contas_pagar.forma_pgto', $formapgto);
+            }
         }
     }
 

@@ -394,9 +394,13 @@ class Pedidos_model extends CI_Model {
             $this->db->where('pedidos.entregadores_id', $entregador);
          }
 
-         //POR FORMA DE PGTO
+//POR FORMA DE PGTO
         if(!empty($formapgto)){
-            $this->db->where('pedidos.forma_pagamento_balcao', $formapgto);
+            if(is_array($formapgto)){
+                $this->db->where_in('contas_pagar.forma_pgto', $formapgto);
+            } else {
+                $this->db->where('contas_pagar.forma_pgto', $formapgto);
+            }
          }
 
 
@@ -600,10 +604,14 @@ class Pedidos_model extends CI_Model {
 
          }
 
-         //POR FORMA DE PGTO
-        if(!empty($formapgto)){
-            $this->db->where('contas_receber.forma_pgto', $formapgto);
-         }
+//POR FORMA DE PGTO
+         if(!empty($formapgto)){
+             if(is_array($formapgto)){
+                 $this->db->where_in('contas_receber.forma_pgto', $formapgto);
+             } else {
+                 $this->db->where('contas_receber.forma_pgto', $formapgto);
+             }
+          }
 
          //POR VENDEDOR
         if($vendedor != 'all'){
@@ -842,7 +850,11 @@ class Pedidos_model extends CI_Model {
         }
 
         if(!empty($formapgto)){
-            $this->db->where('contas_receber.forma_pgto', $formapgto);
+            if(is_array($formapgto)){
+                $this->db->where_in('contas_receber.forma_pgto', $formapgto);
+            } else {
+                $this->db->where('contas_receber.forma_pgto', $formapgto);
+            }
         }
 
         if($vendedor != 'all'){
@@ -876,7 +888,11 @@ class Pedidos_model extends CI_Model {
         }
 
         if(!empty($formapgto)){
-            $this->db->where('contas_pagar.forma_pgto', $formapgto);
+            if(is_array($formapgto)){
+                $this->db->where_in('contas_pagar.forma_pgto', $formapgto);
+            } else {
+                $this->db->where('contas_pagar.forma_pgto', $formapgto);
+            }
         }
     }
 

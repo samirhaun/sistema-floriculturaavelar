@@ -136,7 +136,7 @@ class Loja_demonstrativo extends TEC_Controller {
             $data['filtro_referencia'] = $this->input->post('referencia');
             $data['filtro_situacao_pgto'] = $this->input->post('situacao_pgto') ?: array('all');
             $data['filtro_entregador'] = $this->input->post('entregador') ?: 'all';
-            $data['filtro_forma_pgto'] = $this->input->post('forma_pgto');
+            $data['filtro_forma_pgto'] = $this->input->post('forma_pgto') ?: array();
             $data['filtro_exibir_despesas'] = $this->input->post('exibir_despesas');
 
             $inicio = inverteData($data['filtro_inicio'],'-');

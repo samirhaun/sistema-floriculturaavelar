@@ -183,18 +183,16 @@
                 <div class="col-sm-2">
                     <div class="form-group text-left">
                     <label class="control-label">Forma de pagamento:</label>
-                    <select class="form-control" name="forma_pgto">
-                        <option value="">Selecione</option>
-                        <option <?php if (isset($filtro_forma_pgto) && $filtro_forma_pgto == 1){echo 'selected';} ?> value="1">Dinheiro</option>
-                        <option <?php if (isset($filtro_forma_pgto) && $filtro_forma_pgto == 9){echo 'selected';} ?> value="9">Pix</option>
-                        <option <?php if (isset($filtro_forma_pgto) && $filtro_forma_pgto == 2){echo 'selected';} ?> value="2">Débito</option>
-                        <option <?php if (isset($filtro_forma_pgto) && $filtro_forma_pgto == 3){echo 'selected';} ?> value="3">Crédito 1x</option>
-                        <option <?php if (isset($filtro_forma_pgto) && $filtro_forma_pgto == 4){echo 'selected';} ?> value="4">Crédito 2x</option>
-                        <option <?php if (isset($filtro_forma_pgto) && $filtro_forma_pgto == 5){echo 'selected';} ?> value="5">Crédito 3x</option>
-                        <option <?php if (isset($filtro_forma_pgto) && $filtro_forma_pgto == 6){echo 'selected';} ?> value="6">Crédito 4x</option>
-                        <option <?php if (isset($filtro_forma_pgto) && $filtro_forma_pgto == 7){echo 'selected';} ?> value="7">Duplicata</option>
-                        <option <?php if (isset($filtro_forma_pgto) && $filtro_forma_pgto == 8){echo 'selected';} ?> value="8">Cheque</option>
-                        
+                    <select class="form-control select2class" name="forma_pgto[]" multiple="multiple">
+                        <option value="1" <?php if (isset($filtro_forma_pgto) && in_array(1, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Dinheiro</option>
+                        <option value="9" <?php if (isset($filtro_forma_pgto) && in_array(9, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Pix</option>
+                        <option value="2" <?php if (isset($filtro_forma_pgto) && in_array(2, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Débito</option>
+                        <option value="3" <?php if (isset($filtro_forma_pgto) && in_array(3, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Crédito 1x</option>
+                        <option value="4" <?php if (isset($filtro_forma_pgto) && in_array(4, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Crédito 2x</option>
+                        <option value="5" <?php if (isset($filtro_forma_pgto) && in_array(5, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Crédito 3x</option>
+                        <option value="6" <?php if (isset($filtro_forma_pgto) && in_array(6, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Crédito 4x</option>
+                        <option value="7" <?php if (isset($filtro_forma_pgto) && in_array(7, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Duplicata</option>
+                        <option value="8" <?php if (isset($filtro_forma_pgto) && in_array(8, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Cheque</option>
                     </select>
                     </div>
                 </div>
