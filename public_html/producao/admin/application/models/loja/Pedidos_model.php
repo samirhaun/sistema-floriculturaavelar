@@ -465,10 +465,14 @@ class Pedidos_model extends CI_Model {
                 $this->db->where('pedidos.entregadores_id', $entregador);
             }
 
-            //POR FORMA DE PGTO
-            if(!empty($formapgto)){
-                $this->db->where('pedidos.forma_pagamento_balcao', $formapgto);
+//POR FORMA DE PGTO
+        if(!empty($formapgto)){
+            if(is_array($formapgto)){
+                $this->db->where_in('contas_pagar.forma_pgto', $formapgto);
+            } else {
+                $this->db->where('contas_pagar.forma_pgto', $formapgto);
             }
+         }
 
 
 
@@ -537,7 +541,11 @@ class Pedidos_model extends CI_Model {
 
         //POR FORMA DE PGTO
         if(!empty($formapgto)){
-            $this->db->where('contas_pagar.forma_pgto', $formapgto);
+            if(is_array($formapgto)){
+                $this->db->where_in('contas_pagar.forma_pgto', $formapgto);
+            } else {
+                $this->db->where('contas_pagar.forma_pgto', $formapgto);
+            }
          }
 
         // //POR USUARIO/PROFISSIONAL
@@ -669,7 +677,11 @@ class Pedidos_model extends CI_Model {
 
         //POR FORMA DE PGTO
         if(!empty($formapgto)){
-            $this->db->where('contas_pagar.forma_pgto', $formapgto);
+            if(is_array($formapgto)){
+                $this->db->where_in('contas_pagar.forma_pgto', $formapgto);
+            } else {
+                $this->db->where('contas_pagar.forma_pgto', $formapgto);
+            }
          }
 
         // //POR USUARIO/PROFISSIONAL
