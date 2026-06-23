@@ -183,7 +183,7 @@
                 <div class="col-sm-2">
                     <div class="form-group text-left">
                     <label class="control-label">Forma de pagamento:</label>
-                    <select class="form-control select2class" name="forma_pgto[]" multiple="multiple">
+                    <select class="form-control select2class" id="forma_pgto_select" name="forma_pgto[]" multiple="multiple">
                         <option value="1" <?php if (isset($filtro_forma_pgto) && in_array(1, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Dinheiro</option>
                         <option value="9" <?php if (isset($filtro_forma_pgto) && in_array(9, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Pix</option>
                         <option value="2" <?php if (isset($filtro_forma_pgto) && in_array(2, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Débito</option>
@@ -194,6 +194,7 @@
                         <option value="7" <?php if (isset($filtro_forma_pgto) && in_array(7, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Duplicata</option>
                         <option value="8" <?php if (isset($filtro_forma_pgto) && in_array(8, (array)$filtro_forma_pgto)){echo 'selected';} ?>>Cheque</option>
                     </select>
+                    <button type="button" class="btn btn-default btn-xs" style="margin-top:5px;" onclick="toggleTodasFormasPgto()">Todas</button>
                     </div>
                 </div>
                 
@@ -280,8 +281,19 @@
 
 
    function limpa_filtros_profissionais(){
-    $('.select-profissionais').val('').trigger('change');
-  }
+     $('.select-profissionais').val('').trigger('change');
+   }
+
+   function toggleTodasFormasPgto(){
+     var $sel = $('#forma_pgto_select');
+     var allValues = $sel.find('option').map(function(){ return this.value; }).get();
+     var selected = $sel.val() || [];
+     if(selected.length === allValues.length){
+       $sel.val([]).trigger('change');
+     } else {
+       $sel.val(allValues).trigger('change');
+     }
+   }
 
   // Paginação via AJAX (Analítico)
   $('#tabela_resultados').on('click', '.btn-paginate', function(e){
