@@ -1,5 +1,3 @@
-
-
 <?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
 class Contas_pagar_model extends CI_Model {
