@@ -338,16 +338,49 @@ class Produtos_model extends CI_Model {
 
     /* VENDAS */
 
-    public function get_clientes()
+    public function get_clientes($termo = null, $limite = null)
     {
         $this->db->select('clientes.*');
         $this->db->from('clientes');
+
+        if($termo !== null && $termo !== ''){
+            $this->db->group_start();
+            $this->db->like('clientes.nome', $termo);
+            $this->db->or_like('clientes.telefone', $termo);
+            $this->db->or_like('clientes.cpf', $termo);
+            $this->db->group_end();
+        }
+
+        $this->db->order_by('clientes.nome', 'asc');
+
+        if($limite){
+            $this->db->limit((int) $limite);
+        }
+
         $query = $this->db->get();
         if($query->num_rows() > 0){
             return $query->result();
         }else{
             return FALSE;
         }
+    }
+
+    public function get_cliente_resumo($id)
+    {
+        if(!$id){
+            return FALSE;
+        }
+
+        $this->db->select('clientes.id, clientes.nome, clientes.telefone');
+        $this->db->from('clientes');
+        $this->db->where('clientes.id', $id);
+        $query = $this->db->get();
+
+        if($query->num_rows() > 0){
+            return $query->row();
+        }
+
+        return FALSE;
     }
 
 

@@ -29,13 +29,10 @@ class Loja_relatorio_vendas extends TEC_Controller {
 
             $data['produtos'] = $this->pedidos_model->get_vendas_por_produto($inicio, $fim);
             $data['detalhe_produtos'] = $this->pedidos_model->get_vendas_detalhe_produto($inicio, $fim);
-
-            $total_catalogo = 0;
-            if(!empty($data['produtos'])){
-                foreach($data['produtos'] as $p) $total_catalogo += $p->total;
-            }
-            $data['total_catalogo'] = $total_catalogo;
-            $data['total_descontos'] = $total_catalogo - $data['total_vendido'];
+            $data['vendas_vendedores'] = $this->pedidos_model->get_vendas_por_vendedor($inicio, $fim);
+            $descontos = $this->pedidos_model->get_vendas_descontos($inicio, $fim);
+            $data['total_descontos'] = $descontos ? $descontos->total_descontos : 0;
+            $data['qtd_pedidos_desconto'] = $descontos ? $descontos->qtd_pedidos : 0;
 
             $data['resultado'] = $this->load->view('vendas/relatorio_resultado', $data, true);
             $this->montaTela('vendas/relatorio', $data);

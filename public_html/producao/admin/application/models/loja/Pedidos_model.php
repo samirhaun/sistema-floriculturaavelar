@@ -64,7 +64,7 @@ class Pedidos_model extends CI_Model {
 
     }
 
-    public function get_pedidos()
+    public function get_pedidos($limite = 1000)
     {
         $this->db->select('pedidos.*');
         $this->db->select('clientes.nome as cliente_pedido, clientes.telefone as cliente_telefone');
@@ -76,6 +76,9 @@ class Pedidos_model extends CI_Model {
         $this->db->join('contas_receber', 'contas_receber.pedidos_id=pedidos.id','left');
         $this->db->group_by('pedidos.id');
         $this->db->order_by('id','desc');
+        if($limite){
+            $this->db->limit((int) $limite);
+        }
         $query = $this->db->get();
         if($query->num_rows() > 0){
             return $query->result();
@@ -576,6 +579,7 @@ class Pedidos_model extends CI_Model {
         // exit;
 
         $this->db->select('contas_receber.data_vencimento as vencimento_receita, contas_receber.valor as valor_receita, contas_receber.status as status_receita,contas_receber.data_pago as data_pago_receita,contas_receber.forma_pgto as forma_pgto_receita');
+        $this->db->select('CASE WHEN pedidos.status_pedido IN (4, 5) THEN 1 ELSE 0 END as cancelada_relatorio', false);
         $this->db->select('pedidos.*, "pedido" as tipo_credito');
         $this->db->select('clientes.nome as cliente_pedido, clientes.telefone as cliente_telefone,  clientes.email as cliente_email');
         $this->db->select('vendedores.descricao as vendedor_pedido');
@@ -585,7 +589,6 @@ class Pedidos_model extends CI_Model {
         $this->db->join('clientes', 'clientes.id=pedidos.clientes_id','left');
         $this->db->join('eventos', 'eventos.id=pedidos.eventos_id','left');
         $this->db->join('vendedores', 'vendedores.id=pedidos.vendedores_id','left');
-        $this->_excluir_pedidos_cancelados();
         // $this->db->where('pedidos.valor_entrada <=', 0);
 
         if($dtreferencia == 'pgto'):
@@ -703,6 +706,44 @@ class Pedidos_model extends CI_Model {
 
     }
 
+    function get_receitas_abertas_por_vencimento($inicio, $fim, $origem, $vendedor, $entregador, $formapgto)
+    {
+        $this->db->select('contas_receber.id as conta_receber_id, contas_receber.data_vencimento as vencimento_receita, contas_receber.valor as valor_receita, contas_receber.forma_pgto as forma_pgto_receita');
+        $this->db->select('pedidos.id as pedido_id, clientes.nome as cliente_pedido, vendedores.descricao as vendedor_pedido');
+        $this->db->from('contas_receber');
+        $this->db->join('pedidos', 'pedidos.id=contas_receber.pedidos_id', 'left');
+        $this->db->join('clientes', 'clientes.id=pedidos.clientes_id', 'left');
+        $this->db->join('vendedores', 'vendedores.id=pedidos.vendedores_id', 'left');
+        $this->db->where('contas_receber.status', 0);
+        $this->_excluir_pedidos_cancelados();
+        $this->db->where('contas_receber.data_vencimento BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
+
+        if($origem != 'all'){
+            $this->db->where('pedidos.origem', $origem);
+        }
+
+        if($vendedor != 'all'){
+            $this->db->where('pedidos.vendedores_id', $vendedor);
+        }
+
+        if($entregador != 'all'){
+            $this->db->where('pedidos.entregadores_id', $entregador);
+        }
+
+        if(!empty($formapgto)){
+            if(is_array($formapgto)){
+                $this->db->where_in('contas_receber.forma_pgto', $formapgto);
+            } else {
+                $this->db->where('contas_receber.forma_pgto', $formapgto);
+            }
+        }
+
+        $this->db->order_by('contas_receber.data_vencimento', 'ASC');
+        $this->db->order_by('pedidos.id', 'ASC');
+
+        return $this->db->get()->result();
+    }
+
     function get_demonstrativo_novo_count($inicio, $fim, $origem, $vendedor, $dtreferencia, $situacaopgto, $entregador, $formapgto){
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id=contas_receber.pedidos_id','left');
@@ -712,6 +753,7 @@ class Pedidos_model extends CI_Model {
 
     function get_demonstrativo_novo_paginated($inicio, $fim, $origem, $vendedor, $dtreferencia, $situacaopgto, $entregador, $formapgto, $limit, $offset){
         $this->db->select('contas_receber.id, contas_receber.data_vencimento as vencimento_receita, contas_receber.valor as valor_receita, contas_receber.status as status_receita,contas_receber.data_pago as data_pago_receita,contas_receber.forma_pgto as forma_pgto_receita');
+        $this->db->select('CASE WHEN pedidos.status_pedido IN (4, 5) THEN 1 ELSE 0 END as cancelada_relatorio', false);
         $this->db->select('pedidos.*, "pedido" as tipo_credito');
         $this->db->select('clientes.nome as cliente_pedido, clientes.telefone as cliente_telefone, clientes.email as cliente_email');
         $this->db->select('vendedores.descricao as vendedor_pedido');
@@ -970,19 +1012,69 @@ class Pedidos_model extends CI_Model {
         return $this->db->get()->result();
     }
 
+    function get_vendas_descontos($inicio, $fim){
+        $totais = new stdClass();
+        $totais->total_descontos = 0;
+        $totais->qtd_pedidos = 0;
+
+        $this->db->select('pedidos.id, pedidos.tipo_desconto, pedidos.valor_desconto, pedidos.valor, pedidos.valor_frete');
+        $this->db->from('contas_receber');
+        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
+        $this->_excluir_pedidos_cancelados();
+        $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
+        $this->db->where('contas_receber.status', 1);
+        $this->db->where('pedidos.valor_desconto >', 0);
+        $this->db->group_by('pedidos.id, pedidos.tipo_desconto, pedidos.valor_desconto, pedidos.valor, pedidos.valor_frete');
+        $pedidos = $this->db->get()->result();
+
+        foreach($pedidos as $pedido){
+            $base_desconto = (float) $pedido->valor + (float) $pedido->valor_frete;
+            if($pedido->tipo_desconto == 'porcentagem'){
+                $desconto = $base_desconto > 0 ? ($base_desconto * (float) $pedido->valor_desconto / 100) : 0;
+            }else{
+                $desconto = (float) $pedido->valor_desconto;
+            }
+            if($desconto > 0){
+                $totais->total_descontos += $desconto;
+                $totais->qtd_pedidos++;
+            }
+        }
+
+        return $totais;
+    }
+
+    function get_vendas_por_vendedor($inicio, $fim){
+        $this->db->select('COALESCE(vendedores.descricao, "Sem vendedor") as vendedor, COUNT(DISTINCT pedidos.id) as total_pedidos, COUNT(contas_receber.id) as total_parcelas, SUM(contas_receber.valor) as total', false);
+        $this->db->from('contas_receber');
+        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
+        $this->db->join('vendedores', 'vendedores.id = pedidos.vendedores_id', 'left');
+        $this->_excluir_pedidos_cancelados();
+        $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
+        $this->db->where('contas_receber.status', 1);
+        $this->db->group_by('pedidos.vendedores_id, vendedores.descricao');
+        $this->db->order_by('total', 'DESC');
+        return $this->db->get()->result();
+    }
+
     /* RELATÓRIO DE PENDÊNCIAS */
 
     function get_pendencias($inicio, $fim){
-        $this->db->select('contas_receber.*, pedidos.id as pedido_cod, clientes.nome as cliente, clientes.telefone, vendedores.descricao as vendedor');
+        $this->db->select("contas_receber.*, pedidos.id as pedido_cod, pedidos.data_pedido as data_pedido, pedidos.status_pedido, clientes.nome as cliente, clientes.telefone, vendedores.descricao as vendedor, CASE WHEN pedidos.status_pedido IN (4, 5) THEN 1 ELSE 0 END as cancelada_relatorio", false);
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
         $this->db->join('clientes', 'clientes.id = pedidos.clientes_id', 'left');
         $this->db->join('vendedores', 'vendedores.id = pedidos.vendedores_id', 'left');
         $this->db->where('contas_receber.status', 0);
+        $this->db->group_start();
         $this->db->where_not_in('pedidos.status_pedido', array(4, 5));
+        $this->db->or_group_start();
+        $this->db->where_in('pedidos.status_pedido', array(4, 5));
+        $this->db->group_end();
+        $this->db->group_end();
         if($inicio && $fim){
             $this->db->where('contas_receber.data_vencimento BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         }
+        $this->db->order_by('cancelada_relatorio', 'ASC');
         $this->db->order_by('contas_receber.data_vencimento', 'ASC');
         return $this->db->get()->result();
     }
@@ -1006,6 +1098,21 @@ class Pedidos_model extends CI_Model {
             $totais->qtd = $row->qtd;
         }
         return $totais;
+    }
+
+    function get_pendencias_por_vendedor($inicio, $fim){
+        $this->db->select('COALESCE(vendedores.descricao, "Sem vendedor") as vendedor, COUNT(DISTINCT pedidos.id) as total_pedidos, COUNT(contas_receber.id) as total_parcelas, SUM(contas_receber.valor) as total', false);
+        $this->db->from('contas_receber');
+        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
+        $this->db->join('vendedores', 'vendedores.id = pedidos.vendedores_id', 'left');
+        $this->db->where('contas_receber.status', 0);
+        $this->db->where_not_in('pedidos.status_pedido', array(4, 5));
+        if($inicio && $fim){
+            $this->db->where('contas_receber.data_vencimento BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
+        }
+        $this->db->group_by('pedidos.vendedores_id, vendedores.descricao');
+        $this->db->order_by('total', 'DESC');
+        return $this->db->get()->result();
     }
 
     function get_itens_pedidos_lote($pedidos_ids){

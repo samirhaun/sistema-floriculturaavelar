@@ -60,8 +60,15 @@
 
                             <div class="col-sm-3 col-xs-4">
                                 <div class="form-group">
-                                    <label class="control-label">Desconto máximo permitido: *</label>
+                                    <label class="control-label">Desconto máximo permitido (%): *</label>
                                     <input type="text" name="desconto_maximo" class="form-control" value="<?php echo (isset($usuario)) ? $usuario->desconto_maximo : '0' ?>" required>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="control-label">Desconto máximo permitido (R$): *</label>
+                                    <input type="text" name="desconto_maximo_valor" class="form-control" value="<?php echo (isset($usuario) && isset($usuario->desconto_maximo_valor)) ? number_format($usuario->desconto_maximo_valor, 2, ',', '.') : '0,00' ?>" required>
                                 </div>
                             </div>
 

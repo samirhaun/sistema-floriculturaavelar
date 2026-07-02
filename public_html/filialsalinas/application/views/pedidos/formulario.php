@@ -29,7 +29,7 @@
       <div class="ibox float-e-margins">
         <div class="ibox-content">
           <div class="hr-line-dashed"></div>
-          <form action="<?php echo base_url(array('site', 'salvar-pedido')) ?>" method="post" id="form-cadastro-pedido" enctype="multipart/form-data">
+          <form action="<?php echo base_url(array('site', 'salvar-pedido')) ?>" method="post" id="form-cadastro-pedido" enctype="multipart/form-data" onsubmit="return trava_submit_pedido();">
             <?php if (isset($pedido)): ?>
               <input type="hidden" name="id" value="<?php echo $pedido->id ?>">
             <?php endif ?>
@@ -329,18 +329,6 @@
 
         <input type="hidden" id="contador_qtd_produtos" value="<?php echo $cont_ped; ?>">
 
-        <?php 
-
-
-        foreach ($produtos as $key => $produto): 
-        
-        ?>
-          
-          <input type="hidden" id="valor_produto_<?php echo $produto->id ?>" value="<?php echo $produto->valor; ?>">
-          
-        <?php endforeach ?>
-
-
         <!-- FIM PARAMETROS -->
 
         <div class="row">
@@ -380,7 +368,7 @@
                                 <option value="">Selecione</option>
 
                                 <?php foreach ($produtos as $key => $produto): ?>
-                                  <option <?php if (isset($produto_pedido) && $produto_pedido->produtos_id == $produto->id){echo 'selected';} ?> value="<?php echo $produto->id ?>">cod: <?php echo $produto->id; ?> - <?php echo $produto->titulo; ?></option>
+                                  <option <?php if (isset($produto_pedido) && $produto_pedido->produtos_id == $produto->id){echo 'selected';} ?> value="<?php echo $produto->id ?>" data-valor="<?php echo $produto->valor; ?>">cod: <?php echo $produto->id; ?> - <?php echo $produto->titulo; ?></option>
                                 <?php endforeach ?>
                                 
                               </select>
@@ -469,7 +457,7 @@
                     <option value="">Selecione</option>
 
                     <?php foreach ($produtos as $key => $produto): ?>
-                      <option value="<?php echo $produto->id ?>">cod: <?php echo $produto->id; ?> - <?php echo $produto->titulo; ?></option>
+                      <option value="<?php echo $produto->id ?>" data-valor="<?php echo $produto->valor; ?>">cod: <?php echo $produto->id; ?> - <?php echo $produto->titulo; ?></option>
                     <?php endforeach ?>
                     
                   </select>
@@ -831,7 +819,7 @@
                   <option value="">Selecione</option>
 
                   <?php foreach ($plano_contas as $key => $plano_conta): ?>
-                  <option <?php if (isset($dados) && $dados->plano_contas_id == $plano_conta->id){echo 'selected';} ?> value="<?php echo $plano_conta->id ?>"><?php echo $plano_conta->cod; ?> - <?php echo $plano_conta->descricao; ?></option>
+                  <option <?php if (isset($dados) && $dados->plano_contas_id == $plano_conta->id){echo 'selected';} ?> value="<?php echo $plano_conta->id ?>"><?php echo isset($plano_conta->rotulo_select) ? $plano_conta->rotulo_select : $plano_conta->cod . ' - ' . strtoupper($plano_conta->descricao); ?></option>
                   <?php endforeach ?>
                   
               </select>
@@ -1022,7 +1010,7 @@
         <div class="form-group">
           <div class="text-right">
             <a href="<?php echo base_url(array('loja', 'pedidos')) ?>" class="btn btn-white">Cancelar</a>
-            <button class="btn btn-primary" type="button" onclick="salva_form()">Salvar</button>
+            <button class="btn btn-primary js-salvar-pedido" type="button" onclick="salva_form()">Salvar</button>
           </div>
         </div>
       </div>
@@ -1051,7 +1039,7 @@
                     <option value="">Selecione</option>
 
                     <?php foreach ($produtos as $key => $produto): ?>
-                      <option value="<?php echo $produto->id ?>"><?php echo $produto->titulo; ?></option>
+                      <option value="<?php echo $produto->id ?>" data-valor="<?php echo $produto->valor; ?>"><?php echo $produto->titulo; ?></option>
                     <?php endforeach; ?>
                     
                   </select>
@@ -1123,7 +1111,7 @@
                   <option value="">Selecione</option>
 
                   <?php foreach ($plano_contas as $key => $plano_conta): ?>
-                  <option <?php if (isset($dados) && $dados->plano_contas_id == $plano_conta->id){echo 'selected';} ?> value="<?php echo $plano_conta->id ?>"><?php echo $plano_conta->cod; ?> - <?php echo $plano_conta->descricao; ?></option>
+                  <option <?php if (isset($dados) && $dados->plano_contas_id == $plano_conta->id){echo 'selected';} ?> value="<?php echo $plano_conta->id ?>"><?php echo isset($plano_conta->rotulo_select) ? $plano_conta->rotulo_select : $plano_conta->cod . ' - ' . strtoupper($plano_conta->descricao); ?></option>
                   <?php endforeach ?>
                   
               </select>
@@ -1385,7 +1373,7 @@ function modelo_valor(elementos){
 
     function lanca_valor_produto(idproduto,countproduto){
 
-      var valor_produto = $('#valor_produto_'+idproduto).val();
+      var valor_produto = $('#produto_collapse_'+countproduto+' option:selected').data('valor') || '';
 
       $('#valor_collapse_'+countproduto).val(valor_produto);
 
@@ -1573,6 +1561,7 @@ function modelo_valor(elementos){
 
     var auth_desconto_ok = false;
     var desconto_pendente_valor = 0;
+    var auth_pct_solicitado = 0;
     var auth_em_progresso = false;
 
     function calcula_pedito_total(){
@@ -1592,43 +1581,43 @@ function modelo_valor(elementos){
       if(desconto > 0){
 
         var total_desconto_usuario = "<?php echo $usuario->desconto_maximo ?>";
+        var total_desconto_usuario_valor = "<?php echo isset($usuario->desconto_maximo_valor) ? $usuario->desconto_maximo_valor : 0 ?>";
 
         var limite_pct = parseFloat(total_desconto_usuario);
-        if(limite_pct > 0){
-          if(tipo_desconto_atual == 'porcentagem'){
-            var pct_aplicado = parseFloat(desconto);
-          }else{
-            var pct_aplicado = (parseFloat(desconto) / (parseFloat(valor_produtos) + parseFloat(frete))) * 100;
-          }
-          if(pct_aplicado > limite_pct && !auth_desconto_ok){
-            desconto_pendente_valor = desconto;
-            var desconto_geral = 0;
-            var total_geral = parseFloat(valor_produtos) + parseFloat(frete) - 0;
-            $('#valor_total').val(total_geral.toFixed(2));
-
-            auth_em_progresso = true;
-            $('#valor_desconto').val(0);
-
-            $('#auth-pct').text(pct_aplicado.toFixed(1) + '%');
-            $('#auth-limite').text(limite_pct.toFixed(0) + '%');
-            $('#auth-section-solicitar').show();
-            $('#auth-section-codigo').hide();
-            $('#auth-error').hide();
-            $('#modal-auth-desconto').modal('show');
-            return;
-          }else{
-            if(tipo_desconto_atual == 'porcentagem'){
-              var desconto_geral = (parseFloat(valor_produtos) + parseFloat(frete)) * parseFloat(desconto) / 100;
-            }else{
-              var desconto_geral = desconto;
-            }
-          }
+        var limite_valor = parseFloat(total_desconto_usuario_valor);
+        var base_desconto = parseFloat(valor_produtos) + parseFloat(frete);
+        if(tipo_desconto_atual == 'porcentagem'){
+          var pct_aplicado = parseFloat(desconto);
+          var desconto_reais = base_desconto * parseFloat(desconto) / 100;
         }else{
-          if(tipo_desconto_atual == 'porcentagem'){
-            var desconto_geral = (parseFloat(valor_produtos) + parseFloat(frete)) * parseFloat(desconto) / 100;
-          }else{
-            var desconto_geral = desconto;
-          }
+          var pct_aplicado = base_desconto > 0 ? (parseFloat(desconto) / base_desconto) * 100 : 0;
+          var desconto_reais = parseFloat(desconto);
+        }
+        var excedeu_pct = limite_pct > 0 && pct_aplicado > limite_pct;
+        var excedeu_valor = limite_valor > 0 && desconto_reais > limite_valor;
+
+        if((excedeu_pct || excedeu_valor) && !auth_desconto_ok){
+          desconto_pendente_valor = desconto;
+          auth_pct_solicitado = pct_aplicado;
+          var desconto_geral = 0;
+          var total_geral = parseFloat(valor_produtos) + parseFloat(frete) - 0;
+          $('#valor_total').val(total_geral.toFixed(2));
+
+          auth_em_progresso = true;
+          $('#valor_desconto').val(0);
+
+          var limite_texto = [];
+          if(limite_pct > 0) limite_texto.push(limite_pct.toFixed(0) + '%');
+          if(limite_valor > 0) limite_texto.push('R$ ' + limite_valor.toFixed(2).replace('.', ','));
+          $('#auth-pct').text(pct_aplicado.toFixed(1) + '% / R$ ' + desconto_reais.toFixed(2).replace('.', ','));
+          $('#auth-limite').text(limite_texto.join(' ou '));
+          $('#auth-section-solicitar').show();
+          $('#auth-section-codigo').hide();
+          $('#auth-error').hide();
+          $('#modal-auth-desconto').modal('show');
+          return;
+        }else{
+          var desconto_geral = desconto_reais;
         }
 
       }else{
@@ -1675,7 +1664,7 @@ function modelo_valor(elementos){
 
     $('#btn-solicitar-codigo').on('click', function(){
       var btn = $(this);
-      var pct = $('#auth-pct').text().replace('%','');
+      var pct = auth_pct_solicitado;
       btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Enviando...');
       $('#auth-error').hide();
 
@@ -1963,6 +1952,88 @@ $('.data_mask').datepicker({
         }
     }
 
+    function parseDataBr(data) {
+        if (!data) return null;
+        var partes = data.split('/');
+        if (partes.length !== 3) return null;
+        return new Date(parseInt(partes[2], 10), parseInt(partes[1], 10) - 1, parseInt(partes[0], 10));
+    }
+
+    function formataDataBr(data) {
+        var dia = String(data.getDate()).padStart(2, '0');
+        var mes = String(data.getMonth() + 1).padStart(2, '0');
+        return dia + '/' + mes + '/' + data.getFullYear();
+    }
+
+    function dataRelativa(data, dias) {
+        var novaData = new Date(data.getTime());
+        novaData.setDate(novaData.getDate() + dias);
+        return novaData;
+    }
+
+    function dataPascoa(ano) {
+        var a = ano % 19;
+        var b = Math.floor(ano / 100);
+        var c = ano % 100;
+        var d = Math.floor(b / 4);
+        var e = b % 4;
+        var f = Math.floor((b + 8) / 25);
+        var g = Math.floor((b - f + 1) / 3);
+        var h = (19 * a + b - d - g + 15) % 30;
+        var i = Math.floor(c / 4);
+        var k = c % 4;
+        var l = (32 + 2 * e + 2 * i - h - k) % 7;
+        var m = Math.floor((a + 11 * h + 22 * l) / 451);
+        var mes = Math.floor((h + l - 7 * m + 114) / 31);
+        var dia = ((h + l - 7 * m + 114) % 31) + 1;
+        return new Date(ano, mes - 1, dia);
+    }
+
+    function feriadosBancariosNacionais(ano) {
+        var pascoa = dataPascoa(ano);
+        return [
+            '01/01/' + ano,
+            '21/04/' + ano,
+            '01/05/' + ano,
+            '07/09/' + ano,
+            '12/10/' + ano,
+            '02/11/' + ano,
+            '15/11/' + ano,
+            '20/11/' + ano,
+            '25/12/' + ano,
+            formataDataBr(dataRelativa(pascoa, -48)),
+            formataDataBr(dataRelativa(pascoa, -47)),
+            formataDataBr(dataRelativa(pascoa, -2)),
+            formataDataBr(dataRelativa(pascoa, 60))
+        ];
+    }
+
+    function ehDiaUtil(data) {
+        var diaSemana = data.getDay();
+        if (diaSemana === 0 || diaSemana === 6) return false;
+        return feriadosBancariosNacionais(data.getFullYear()).indexOf(formataDataBr(data)) === -1;
+    }
+
+    function proximoDiaUtil(dataBase) {
+        var data = dataRelativa(dataBase, 1);
+        while (!ehDiaUtil(data)) {
+            data = dataRelativa(data, 1);
+        }
+        return data;
+    }
+
+    function dataLancamentoFinanceiro($item, formaPgto) {
+        var forma = parseInt(formaPgto);
+        if ([3, 4, 5, 6].indexOf(forma) !== -1) {
+            var dataSolicitacao = parseDataBr($('[name="data_solicitacao"]').val()) || new Date();
+            return { data: proximoDiaUtil(dataSolicitacao), detalhe: 'proximo dia util' };
+        }
+
+        var dataPago = parseDataBr($item.find('[name="data_pago_receita[]"]').val());
+        var dataVencimento = parseDataBr($item.find('[name="data_vencimento_receita[]"]').val()) || new Date();
+        return { data: dataPago || dataVencimento, detalhe: dataPago ? 'data paga' : 'vencimento' };
+    }
+
     function atualizaPreviewTaxa($linha) {
         var $item = $linha.closest('.row.item');
         if (!$item.length) $item = $linha.closest('.item');
@@ -2026,11 +2097,14 @@ $('.data_mask').datepicker({
             html += ' | Antecipação: ' + percentual_antecipacao.toFixed(2) + '% = <strong>R$ ' + antecipacaoValor.toFixed(2).replace('.', ',') + '</strong>';
         }
 
+        var lancamento = dataLancamentoFinanceiro($item, formaPgto);
+        html += ' <span class="label label-primary" style="margin-left:8px;">Venda e taxas: ' + formataDataBr(lancamento.data) + ' (' + lancamento.detalhe + ')</span>';
+
         $preview.find('.taxa-preview-text').html(html);
         $preview.show();
     }
 
-    $(document).on('change', '[name="forma_pgto_receita[]"], [name="maquininha_taxa_id_receita[]"]', function() {
+    $(document).on('change', '[name="forma_pgto_receita[]"], [name="maquininha_taxa_id_receita[]"], [name="data_vencimento_receita[]"], [name="data_pago_receita[]"]', function() {
         atualizaPreviewTaxa($(this).closest('.row'));
     });
 
@@ -2040,7 +2114,20 @@ $('.data_mask').datepicker({
 
     $("[name=clientes_id]").select2({
         placeholder: "Selecione um cliente",
-        allowClear: true
+        allowClear: true,
+        minimumInputLength: 2,
+        ajax: {
+            url: '<?php echo base_url(['site', 'buscar-clientes']) ?>',
+            dataType: 'json',
+            delay: 250,
+            data: function(params) {
+                return { q: params.term };
+            },
+            processResults: function(data) {
+                return data;
+            },
+            cache: true
+        }
     });
 
     $("#enderecos_cliente").select2({
@@ -2578,6 +2665,9 @@ $('.data_mask').datepicker({
 
       function salva_form()
       {
+        if (window.pedidoEnvioEmAndamento) {
+          return false;
+        }
         
 
         var total_pagar = $('#valor_total').val();
@@ -2605,12 +2695,40 @@ $('.data_mask').datepicker({
           if(total_pagar != soma_contas_receber){
             swal('Atenção', 'O valor da soma das parcelas é divergente do Valor Final a pagar.', 'warning');
           }else{
-            $('#form-cadastro-pedido').submit();
+            var $formPedido = $('#form-cadastro-pedido');
+            if ($formPedido.data('validator') && !$formPedido.valid()) {
+              return false;
+            }
+
+            bloqueia_envio_pedido();
+            document.getElementById('form-cadastro-pedido').submit();
           }
 
 
         
 
+      }
+
+      function bloqueia_envio_pedido()
+      {
+        window.pedidoEnvioEmAndamento = true;
+        var $botao = $('.js-salvar-pedido');
+        $botao.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Salvando...');
+      }
+
+      function trava_submit_pedido()
+      {
+        if (window.pedidoEnvioEmAndamento) {
+          return false;
+        }
+
+        var $formPedido = $('#form-cadastro-pedido');
+        if ($formPedido.data('validator') && !$formPedido.valid()) {
+          return false;
+        }
+
+        bloqueia_envio_pedido();
+        return true;
       }
 
 

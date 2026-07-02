@@ -81,10 +81,27 @@ class Plano_contas_model extends CI_Model {
         $query = $this->db->get();
 
         if ($query->num_rows() > 0) {
-            return $this->montar_arvore($query->result());
+            return $this->preparar_planos_select($this->montar_arvore($query->result()));
         }
 
         return array();
+    }
+
+    private function preparar_planos_select($planos)
+    {
+        foreach($planos as $plano){
+            $plano->descricao = $this->texto_maiusculo($plano->descricao);
+
+            $prefixo = '';
+            if(!empty($plano->nivel)){
+                $prefixo = str_repeat('&nbsp;&nbsp;&nbsp;', (int) $plano->nivel) . '|-- ';
+            }
+
+            $codigo = trim((string) $plano->cod);
+            $plano->rotulo_select = $prefixo . ($codigo !== '' ? $codigo . ' - ' : '') . $plano->descricao;
+        }
+
+        return $planos;
     }
 
     private function montar_arvore($contas)
@@ -124,6 +141,7 @@ class Plano_contas_model extends CI_Model {
 
         foreach ($por_pai[$pai] as $conta) {
             $conta->nivel = $nivel;
+            $conta->tem_filhos = !empty($por_pai[(int) $conta->id]) ? 1 : 0;
             $resultado[] = $conta;
             $this->adicionar_filhos($resultado, $por_pai, (int) $conta->id, $nivel + 1);
         }
@@ -150,6 +168,17 @@ class Plano_contas_model extends CI_Model {
         }
 
         return strcasecmp($a->descricao, $b->descricao);
+    }
+
+    private function texto_maiusculo($texto)
+    {
+        $texto = trim((string) $texto);
+
+        if (function_exists('mb_strtoupper')) {
+            return mb_strtoupper($texto, 'UTF-8');
+        }
+
+        return strtoupper($texto);
     }
 
     

@@ -99,6 +99,7 @@ $route['site/excluir-pedido']                         = "Site_pedidos/excluir_pe
 $route['site/item/excluir']                           = "Site_pedidos/excluir_item";
 $route['site/enderecos-cliente']                      = "Site_pedidos/enderecos_cliente";
 $route['site/enderecos-cliente-setar']                = "Site_pedidos/enderecos_cliente_setar";
+$route['site/buscar-clientes']                        = "Site_pedidos/buscar_clientes";
 
 $route['site/get-cupom']                              = "Site_pedidos/get_cupom";
 $route['site/solicitar-codigo-desconto']              = "Site_pedidos/solicitar_codigo_desconto";

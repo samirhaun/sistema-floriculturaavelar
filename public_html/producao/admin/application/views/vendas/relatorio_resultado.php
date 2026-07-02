@@ -62,6 +62,62 @@
                                 <div class="card-value">R$ <?php echo number_format($ticket_medio, 2, ',', '.'); ?></div>
                             </div>
                         </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="card-vendas" style="background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);">
+                                <i class="fa fa-percent card-icon"></i>
+                                <div class="card-label">Descontos aplicados</div>
+                                <div class="card-value">R$ <?php echo number_format($total_descontos, 2, ',', '.'); ?></div>
+                                <div style="font-size:11px; opacity:.85;"><?php echo number_format(isset($qtd_pedidos_desconto) ? $qtd_pedidos_desconto : 0, 0, ',', '.'); ?> pedidos com desconto</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VENDEDORES -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="breakdown-box">
+                                <h5><i class="fa fa-user text-info"></i> Vendas por vendedor</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-condensed" style="margin-bottom:0;">
+                                        <thead>
+                                            <tr>
+                                                <th>Vendedor</th>
+                                                <th class="text-right">Pedidos</th>
+                                                <th class="text-right">Total vendido</th>
+                                                <th class="text-right">Ticket médio</th>
+                                                <th class="text-right" style="width:15%;">%</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php if(!empty($vendas_vendedores)): ?>
+                                                <?php foreach($vendas_vendedores as $v):
+                                                    $total_vendedor = (float) $v->total;
+                                                    $pct_vendedor = $total_vendido > 0 ? ($total_vendedor / $total_vendido * 100) : 0;
+                                                    $ticket_vendedor = $v->total_pedidos > 0 ? ($total_vendedor / $v->total_pedidos) : 0;
+                                                ?>
+                                                <tr>
+                                                    <td><strong><?php echo $v->vendedor; ?></strong></td>
+                                                    <td class="text-right"><?php echo number_format($v->total_pedidos, 0, ',', '.'); ?></td>
+                                                    <td class="text-right"><strong>R$ <?php echo number_format($total_vendedor, 2, ',', '.'); ?></strong></td>
+                                                    <td class="text-right">R$ <?php echo number_format($ticket_vendedor, 2, ',', '.'); ?></td>
+                                                    <td class="text-right">
+                                                        <div style="display:flex; align-items:center; gap:8px;">
+                                                            <div style="flex:1; height:10px; background:#e0e0e0; border-radius:5px; overflow:hidden;">
+                                                                <div style="width:<?php echo min(100, round($pct_vendedor)); ?>%; height:100%; background:#23c6c8; border-radius:5px;"></div>
+                                                            </div>
+                                                            <span style="font-size:10px; min-width:35px; text-align:right;"><?php echo number_format($pct_vendedor, 1); ?>%</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            <?php else: ?>
+                                                <tr><td colspan="5" class="text-center text-muted">Nenhuma venda por vendedor encontrada</td></tr>
+                                            <?php endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- PRODUTOS -->

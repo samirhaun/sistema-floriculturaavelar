@@ -193,6 +193,11 @@ class Loja_demonstrativo extends TEC_Controller {
                 $data['filtro_forma_pgto'], $data['filtro_situacao_pgto']
             );
 
+            $data['card_receitas_abertas'] = $this->pedidos_model->get_receitas_abertas_por_vencimento(
+                $inicio, $fim, $data['filtro_origem'], $data['filtro_vendedor'],
+                $data['filtro_entregador'], $data['filtro_forma_pgto']
+            );
+
             $data['totais_por_categoria'] = $this->pedidos_model->get_demonstrativo_por_categoria(
                 $inicio, $fim, $data['filtro_referencia']
             );
@@ -219,10 +224,19 @@ class Loja_demonstrativo extends TEC_Controller {
 
             $total_receitas_aberto = 0; $total_receitas_pago = 0;
             foreach($pedidos_all as $p){
+                if(!empty($p->cancelada_relatorio)){
+                    continue;
+                }
                 if($p->status_receita == 1) $total_receitas_pago += (float) $p->valor_receita;
                 else $total_receitas_aberto += (float) $p->valor_receita;
             }
-            $data['card_total_a_receber'] = $total_receitas_aberto;
+            $card_total_a_receber = 0;
+            if(!empty($data['card_receitas_abertas'])){
+                foreach($data['card_receitas_abertas'] as $r){
+                    $card_total_a_receber += (float) $r->valor_receita;
+                }
+            }
+            $data['card_total_a_receber'] = $card_total_a_receber;
             $data['card_total_recebido'] = $total_receitas_pago;
 
             $total_desp_aberto = 0; $total_desp_pago = 0;
@@ -233,7 +247,7 @@ class Loja_demonstrativo extends TEC_Controller {
             $data['card_total_a_pagar'] = $total_desp_aberto;
             $data['card_total_pago_desp'] = $total_desp_pago;
             $data['card_saldo'] = $total_receitas_pago - $total_desp_pago;
-            $data['card_previsao'] = $total_receitas_aberto - $total_desp_aberto;
+            $data['card_previsao'] = $card_total_a_receber - $total_desp_aberto;
 
             $data['resultado'] = $this->load->view('pedidos/relatorio_resultado_novo', $data, true);
 

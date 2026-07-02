@@ -166,7 +166,7 @@ function novo_pedido(){
   $data['produtos'] =  $this->produtos_model->get_produtos($apenas_pedidos = 1);
 
 
-  $data['clientes'] = $this->produtos_model->get_clientes();
+  $data['clientes'] = array();
 
   $data['vendedores'] = $this->produtos_model->get_vendedores();
 
@@ -183,6 +183,106 @@ function novo_pedido(){
   // exit;
 
   $this->montaTela('pedidos/formulario', $data);
+}
+
+public function buscar_clientes()
+{
+  $termo = $this->input->get('q');
+  $clientes = $this->produtos_model->get_clientes($termo, 30);
+  $resultado = array(
+    array('id' => 'novo', 'text' => 'Cadastrar novo')
+  );
+
+  if(!empty($clientes)){
+    foreach($clientes as $cliente){
+      $texto = $cliente->nome;
+      if(!empty($cliente->telefone)){
+        $texto .= ' - ' . $cliente->telefone;
+      }
+
+      $resultado[] = array(
+        'id' => $cliente->id,
+        'text' => $texto
+      );
+    }
+  }
+
+  $this->output
+    ->set_content_type('application/json')
+    ->set_output(json_encode(array('results' => $resultado)));
+}
+
+private function proximo_dia_util($data)
+{
+  $data_util = new DateTime($data);
+  $data_util->modify('+1 day');
+
+  while(!$this->eh_dia_util($data_util)){
+    $data_util->modify('+1 day');
+  }
+
+  return $data_util->format('Y-m-d');
+}
+
+private function eh_dia_util(DateTime $data)
+{
+  $dia_semana = (int) $data->format('N');
+  if($dia_semana >= 6){
+    return false;
+  }
+
+  $feriados = $this->feriados_bancarios_nacionais((int) $data->format('Y'));
+  return !in_array($data->format('Y-m-d'), $feriados);
+}
+
+private function feriados_bancarios_nacionais($ano)
+{
+  $pascoa = $this->data_pascoa($ano);
+
+  $feriados = array(
+    $ano.'-01-01',
+    $ano.'-04-21',
+    $ano.'-05-01',
+    $ano.'-09-07',
+    $ano.'-10-12',
+    $ano.'-11-02',
+    $ano.'-11-15',
+    $ano.'-11-20',
+    $ano.'-12-25',
+    $this->data_relativa($pascoa, -48),
+    $this->data_relativa($pascoa, -47),
+    $this->data_relativa($pascoa, -2),
+    $this->data_relativa($pascoa, 60),
+  );
+
+  return $feriados;
+}
+
+private function data_relativa(DateTime $data, $dias)
+{
+  $nova_data = clone $data;
+  $nova_data->modify(($dias >= 0 ? '+' : '').$dias.' days');
+  return $nova_data->format('Y-m-d');
+}
+
+private function data_pascoa($ano)
+{
+  $a = $ano % 19;
+  $b = (int) floor($ano / 100);
+  $c = $ano % 100;
+  $d = (int) floor($b / 4);
+  $e = $b % 4;
+  $f = (int) floor(($b + 8) / 25);
+  $g = (int) floor(($b - $f + 1) / 3);
+  $h = (19 * $a + $b - $d - $g + 15) % 30;
+  $i = (int) floor($c / 4);
+  $k = $c % 4;
+  $l = (32 + 2 * $e + 2 * $i - $h - $k) % 7;
+  $m = (int) floor(($a + 11 * $h + 22 * $l) / 451);
+  $mes = (int) floor(($h + $l - 7 * $m + 114) / 31);
+  $dia = (($h + $l - 7 * $m + 114) % 31) + 1;
+
+  return new DateTime(sprintf('%04d-%02d-%02d', $ano, $mes, $dia));
 }
 
 public function modelo_pedidos(){
@@ -231,25 +331,34 @@ function salvar_pedido(){
   if($this->input->post()){
 
 
-    // VALIDAÇÃO DESCONTO MÁXIMO (%)
+    // VALIDACAO DESCONTO MAXIMO (% E R$)
     $desconto_valor = (float) str_replace(',', '.', $this->input->post('valor_desconto'));
     $tipo_desconto = $this->input->post('tipo_desconto');
     $valor_base = (float) str_replace(',', '.', $this->input->post('valor'));
     $valor_frete_val = (float) str_replace(',', '.', $this->input->post('valor_frete'));
-    
+    $base_desconto = $valor_base + $valor_frete_val;
+
     if($tipo_desconto == 'porcentagem'){
       $pct_aplicado = $desconto_valor;
+      $desconto_em_reais = $base_desconto > 0 ? ($base_desconto * $desconto_valor / 100) : 0;
     } else {
-      $pct_aplicado = ($valor_base + $valor_frete_val) > 0 ? ($desconto_valor / ($valor_base + $valor_frete_val)) * 100 : 0;
+      $pct_aplicado = $base_desconto > 0 ? ($desconto_valor / $base_desconto) * 100 : 0;
+      $desconto_em_reais = $desconto_valor;
     }
 
     $usuario_logado = $this->pedidos_model->get_info_usuario_logado();
     $desconto_maximo = (float) $usuario_logado->desconto_maximo;
+    $desconto_maximo_valor = isset($usuario_logado->desconto_maximo_valor) ? (float) $usuario_logado->desconto_maximo_valor : 0;
+    $excedeu_pct = $desconto_maximo > 0 && $pct_aplicado > $desconto_maximo;
+    $excedeu_valor = $desconto_maximo_valor > 0 && $desconto_em_reais > $desconto_maximo_valor;
 
-    if($desconto_maximo > 0 && $pct_aplicado > $desconto_maximo){
+    if($excedeu_pct || $excedeu_valor){
       $autorizado = (isset($_SESSION['auth_desconto_autorizado']) && $_SESSION['auth_desconto_autorizado'] === true);
       if(!$autorizado){
-        $msg = urlencode(number_format($pct_aplicado, 1) . '% excede o limite de ' . number_format($desconto_maximo, 0) . '% do seu usuário.');
+        $motivos = array();
+        if($excedeu_pct) $motivos[] = number_format($pct_aplicado, 1) . '% excede o limite de ' . number_format($desconto_maximo, 0) . '%';
+        if($excedeu_valor) $motivos[] = 'R$ ' . number_format($desconto_em_reais, 2, ',', '.') . ' excede o limite de R$ ' . number_format($desconto_maximo_valor, 2, ',', '.');
+        $msg = urlencode(implode(' e ', $motivos) . ' do seu usuario.');
         if($this->input->post('id')){
           redirect('site/editar-pedido?id=' . $this->input->post('id') . '&type=error&title=Desconto+não+permitido&message=' . $msg);
         } else {
@@ -405,6 +514,8 @@ if($id_pedido = $this->pedidos_model->salvar_pedido($dados, $id))
 
 
   $contas_receber_count = $this->input->post('valor_receita');
+  $data_base_cartao = ($this->input->post('data_solicitacao')) ? inverteData($this->input->post('data_solicitacao'), '/') : date('Y-m-d');
+  $data_recebimento_cartao = $this->proximo_dia_util($data_base_cartao);
     
     if(count($contas_receber_count) > 0){
 
@@ -419,12 +530,14 @@ if($id_pedido = $this->pedidos_model->salvar_pedido($dados, $id))
         $dados_receita['descricao'] = 'Parcela de pedido';
         $dados_receita['data_vencimento'] = inverteData($this->input->post('data_vencimento_receita')[$key],'/');
         $dados_receita['valor'] = str_replace(',', '.', $this->input->post('valor_receita')[$key]) ;
-        $dados_receita['status'] = $this->input->post('status_receita')[$key];
-        $dados_receita['data_pago'] = ($this->input->post('data_pago_receita')[$key]) ? inverteData($this->input->post('data_pago_receita')[$key],'/') : null;
+        $forma_pgto_receita = ($this->input->post('forma_pgto_receita')[$key]) ? $this->input->post('forma_pgto_receita')[$key] : null;
+        $eh_credito = in_array((int) $forma_pgto_receita, array(3, 4, 5, 6));
+        $dados_receita['status'] = $eh_credito ? 1 : $this->input->post('status_receita')[$key];
+        $dados_receita['data_pago'] = $eh_credito ? $data_recebimento_cartao : (($this->input->post('data_pago_receita')[$key]) ? inverteData($this->input->post('data_pago_receita')[$key],'/') : null);
         //ESSE PLANO MANUAL
         $dados_receita['plano_contas_id'] = 33;
         $dados_receita['pedidos_id'] = $id_pedido;
-        $dados_receita['forma_pgto'] = ($this->input->post('forma_pgto_receita')[$key]) ? $this->input->post('forma_pgto_receita')[$key] : null;
+        $dados_receita['forma_pgto'] = $forma_pgto_receita;
         $maquininhas = $this->input->post('maquininha_cartao_id_receita');
         $dados_receita['maquininha_cartao_id'] = (isset($maquininhas[$key]) && $maquininhas[$key]) ? $maquininhas[$key] : null;
         $taxas_maquininhas = $this->input->post('maquininha_taxa_id_receita');
@@ -657,7 +770,8 @@ public function editar_pedido()
     $dados['produtos'] =  $this->produtos_model->get_produtos($apenas_pedidos = 1);
 
 
-    $dados['clientes'] = $this->produtos_model->get_clientes();
+    $cliente_selecionado = $this->produtos_model->get_cliente_resumo($dados['pedido']->clientes_id);
+    $dados['clientes'] = (!empty($cliente_selecionado)) ? array($cliente_selecionado) : array();
   
     $dados['vendedores'] = $this->produtos_model->get_vendedores();
   

@@ -10,6 +10,9 @@
     .badge-vencido { background: #d32f2f; color: #fff; font-size: 10px; }
     .badge-hoje { background: #f57c00; color: #fff; font-size: 10px; }
     .badge-futuro { background: #1976d2; color: #fff; font-size: 10px; }
+    .badge-cancelada { background: #b71c1c; color: #fff; font-size: 10px; }
+    .linha-cancelada td { background: #ffebee !important; color: #b71c1c; }
+    .linha-cancelada .btn-toggle-itens { color: #b71c1c; }
 
     .breakdown-box {
         border: 1px solid #e7eaec; border-radius: 6px; padding: 12px 15px;
@@ -66,6 +69,56 @@
                         </div>
                     </div>
 
+                    <!-- VENDEDORES -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="breakdown-box">
+                                <h5><i class="fa fa-user text-warning"></i> Pendências por vendedor</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-condensed" style="margin-bottom:0; font-size:12px;">
+                                        <thead>
+                                            <tr>
+                                                <th>Vendedor</th>
+                                                <th class="text-right">Pedidos</th>
+                                                <th class="text-right">Parcelas</th>
+                                                <th class="text-right">Total pendente</th>
+                                                <th class="text-right">Ticket médio</th>
+                                                <th class="text-right" style="width:15%;">%</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php if(!empty($pendencias_vendedores)): ?>
+                                                <?php foreach($pendencias_vendedores as $v):
+                                                    $total_vendedor = (float) $v->total;
+                                                    $pct_vendedor = $total_pendente > 0 ? ($total_vendedor / $total_pendente * 100) : 0;
+                                                    $ticket_vendedor = $v->total_parcelas > 0 ? ($total_vendedor / $v->total_parcelas) : 0;
+                                                ?>
+                                                <tr>
+                                                    <td><strong><?php echo $v->vendedor; ?></strong></td>
+                                                    <td class="text-right"><?php echo number_format($v->total_pedidos, 0, ',', '.'); ?></td>
+                                                    <td class="text-right"><?php echo number_format($v->total_parcelas, 0, ',', '.'); ?></td>
+                                                    <td class="text-right"><strong>R$ <?php echo number_format($total_vendedor, 2, ',', '.'); ?></strong></td>
+                                                    <td class="text-right">R$ <?php echo number_format($ticket_vendedor, 2, ',', '.'); ?></td>
+                                                    <td class="text-right">
+                                                        <div style="display:flex; align-items:center; gap:8px;">
+                                                            <div style="flex:1; height:10px; background:#e0e0e0; border-radius:5px; overflow:hidden;">
+                                                                <div style="width:<?php echo min(100, round($pct_vendedor)); ?>%; height:100%; background:#f57c00; border-radius:5px;"></div>
+                                                            </div>
+                                                            <span style="font-size:10px; min-width:35px; text-align:right;"><?php echo number_format($pct_vendedor, 1); ?>%</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                            <?php else: ?>
+                                                <tr><td colspan="6" class="text-center text-muted">Nenhuma pendência por vendedor encontrada</td></tr>
+                                            <?php endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- TABELA -->
                     <div class="row">
                         <div class="col-md-12">
@@ -73,7 +126,7 @@
                                 <h5><i class="fa fa-clock-o text-danger"></i> Parcelas em aberto</h5>
                                 <div class="table-responsive">
                                 <table class="table table-condensed table-striped" style="font-size:12px;">
-                                    <thead><tr><th>Pedido</th><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Atraso</th><th>Forma Pgto</th><th>Vendedor</th></tr></thead>
+                                    <thead><tr><th>Pedido</th><th>Data Pedido</th><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Atraso</th><th>Forma Pgto</th><th>Vendedor</th></tr></thead>
                                     <tbody>
                                         <?php
                                         $hoje = date('Y-m-d');
@@ -83,11 +136,15 @@
                                         if(!empty($pendencias)):
                                             $pedido_anterior = null;
                                             foreach($pendencias as $p):
+                                                $cancelada_relatorio = !empty($p->cancelada_relatorio);
                                                 $dias = (strtotime($hoje) - strtotime($p->data_vencimento)) / 86400;
-                                                if($dias > 0) $total_vencido += $p->valor;
-                                                else $total_futuro += $p->valor;
+                                                if(!$cancelada_relatorio){
+                                                    if($dias > 0) $total_vencido += $p->valor;
+                                                    else $total_futuro += $p->valor;
+                                                }
 
-                                                if($dias > 0) $badge = '<span class="badge badge-vencido">'.floor($dias).'d</span>';
+                                                if($cancelada_relatorio) $badge = '<span class="badge badge-cancelada">Cancelada</span>';
+                                                elseif($dias > 0) $badge = '<span class="badge badge-vencido">'.floor($dias).'d</span>';
                                                 elseif($dias == 0) $badge = '<span class="badge badge-hoje">Hoje</span>';
                                                 else $badge = '<span class="badge badge-futuro">'.abs(floor($dias)).'d</span>';
 
@@ -98,7 +155,7 @@
                                         ?>
                                         <?php if($is_novo_pedido && $pedido_anterior !== null && $tem_itens): ?>
                                         <tr class="row-itens" id="itens-<?php echo $pedido_anterior; ?>">
-                                            <td colspan="7">
+                                            <td colspan="8">
                                                 <div class="itens-inner">
                                                     <table class="table table-condensed">
                                                         <thead><tr><th>Produto</th><th>Qtd</th><th>Valor Total</th></tr></thead>
@@ -120,7 +177,7 @@
                                         <?php if($is_novo_pedido && $pedido_anterior !== null && !isset($itens_pedidos[$pedido_anterior]) && isset($itens_pedidos[$p->pedido_cod])): ?>
                                         <?php endif; ?>
 
-                                        <tr>
+                                        <tr class="<?php echo $cancelada_relatorio ? 'linha-cancelada' : ''; ?>">
                                             <td>
                                                 <?php if($tem_itens): ?>
                                                 <button type="button" class="btn-toggle-itens" onclick="$('#itens-<?php echo $p->pedido_cod; ?>').toggle()">
@@ -130,9 +187,10 @@
                                                 #<?php echo $p->pedido_cod; ?>
                                                 <?php endif; ?>
                                             </td>
+                                            <td><?php echo !empty($p->data_pedido) ? date('d/m/Y', strtotime($p->data_pedido)) : '-'; ?></td>
                                             <td><?php echo $p->cliente; ?></td>
                                             <td><?php echo date('d/m/Y', strtotime($p->data_vencimento)); ?></td>
-                                            <td>R$ <?php echo number_format($p->valor, 2, ',', '.'); ?></td>
+                                            <td>R$ <?php echo number_format($p->valor, 2, ',', '.'); ?><?php echo $cancelada_relatorio ? ' <span class="badge badge-cancelada">fora dos totais</span>' : ''; ?></td>
                                             <td><?php echo $badge; ?></td>
                                             <td><?php echo $forma; ?></td>
                                             <td><?php echo $p->vendedor; ?></td>
@@ -142,7 +200,7 @@
 
                                         <?php if($pedido_anterior !== null && isset($itens_pedidos[$pedido_anterior])): ?>
                                         <tr class="row-itens" id="itens-<?php echo $pedido_anterior; ?>">
-                                            <td colspan="7">
+                                            <td colspan="8">
                                                 <div class="itens-inner">
                                                     <table class="table table-condensed">
                                                         <thead><tr><th>Produto</th><th>Qtd</th><th>Valor Total</th></tr></thead>
@@ -162,13 +220,13 @@
                                         <?php endif; ?>
 
                                         <?php else: ?>
-                                        <tr><td colspan="7" class="text-center text-muted">Nenhuma pendência encontrada</td></tr>
+                                            <tr><td colspan="8" class="text-center text-muted">Nenhuma pendência encontrada</td></tr>
                                         <?php endif; ?>
                                     </tbody>
                                     <tfoot>
                                         <tr style="font-weight:700; border-top:2px solid #ddd;">
                                             <td>TOTAL</td>
-                                            <td></td><td></td>
+                                            <td></td><td></td><td></td>
                                             <td>R$ <?php echo number_format($total_pendente, 2, ',', '.'); ?></td>
                                             <td></td><td></td><td></td>
                                         </tr>

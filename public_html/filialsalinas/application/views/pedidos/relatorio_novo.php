@@ -49,6 +49,28 @@
     height: 56px;
     overflow-y: auto;
   }
+  .plano-conta-option{
+    display: block;
+    line-height: 1.35;
+  }
+  .plano-conta-grupo{
+    font-weight: 700;
+    color: #1f2933;
+  }
+  .plano-conta-level-1{
+    padding-left: 18px;
+    font-weight: 600;
+    color: #374151;
+  }
+  .plano-conta-level-2{
+    padding-left: 36px;
+    color: #4b5563;
+  }
+  .plano-conta-level-3{
+    padding-left: 54px;
+    color: #6b7280;
+    font-size: 12px;
+  }
 </style>
 
 <div class="wrapper wrapper-content animated fadeInRight hidden-print" style="padding: 20px 10px 0px;">
@@ -136,11 +158,11 @@
                 <div class="col-md-2">
                   <div class="form-group text-left">
                   <label class="control-label">Plano de conta:</label>
-                  <select required="" class="form-control select2class" name="plano_contas_id">
+                  <select required="" class="form-control select2class plano-contas-select" name="plano_contas_id">
                       <option value="all">Todos</option>
 
                       <?php foreach ($plano_contas as $key => $plano_conta): ?>
-                      <option <?php echo (isset($filtro_plano_conta) && $filtro_plano_conta == $plano_conta->id) ? 'selected' : '' ?> value="<?php echo $plano_conta->id ?>"><?php echo $plano_conta->cod; ?> - <?php echo $plano_conta->descricao; ?></option>
+                      <option <?php echo (isset($filtro_plano_conta) && $filtro_plano_conta == $plano_conta->id) ? 'selected' : '' ?> value="<?php echo $plano_conta->id ?>" data-level="<?php echo isset($plano_conta->nivel) ? (int) $plano_conta->nivel : 0; ?>" data-filhos="<?php echo !empty($plano_conta->tem_filhos) ? 1 : 0; ?>"><?php echo isset($plano_conta->rotulo_select) ? $plano_conta->rotulo_select : $plano_conta->cod . ' - ' . strtoupper($plano_conta->descricao); ?></option>
                       <?php endforeach ?>
                       
                   </select>
@@ -222,7 +244,11 @@
 
 <script>
   $(document).ready(function() {
-    $(".select2class").select2();
+    $(".select2class").not(".plano-contas-select").select2();
+    $(".plano-contas-select").select2({
+      templateResult: formatPlanoContaSelect,
+      templateSelection: formatPlanoContaSelect
+    });
     $('.data_mask').mask('00/00/0000');
 
     $(".select2_demo_2").select2();
@@ -266,6 +292,24 @@
 
 
   });
+
+  function formatPlanoContaSelect(item){
+    if (!item.id || item.id === 'all') {
+      return item.text;
+    }
+
+    var $option = $(item.element);
+    var level = parseInt($option.data('level'), 10) || 0;
+    var temFilhos = parseInt($option.data('filhos'), 10) || 0;
+    var text = $.trim(item.text.replace(/\|--/g, '').replace(/\s+/g, ' '));
+    var classes = 'plano-conta-option plano-conta-level-' + Math.min(level, 3);
+
+    if (temFilhos) {
+      classes += ' plano-conta-grupo';
+    }
+
+    return $('<span class="' + classes + '"></span>').text(text);
+  }
 
   function limpa_filtros_convenios(){
     $('.select-convenios').val('').trigger('change');

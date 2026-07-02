@@ -6,6 +6,22 @@ class Usuarios_model extends CI_Model {
 
     public function __construct() {
         parent::__construct();
+        $this->ensure_desconto_valor_column($this->db);
+    }
+
+    private function ensure_desconto_valor_column($db)
+    {
+        if(!$db->field_exists('desconto_maximo_valor', 'usuarios')){
+            $dbforge = $this->load->dbforge($db, TRUE);
+            $dbforge->add_column('usuarios', array(
+                'desconto_maximo_valor' => array(
+                    'type' => 'DECIMAL',
+                    'constraint' => '10,2',
+                    'default' => 0,
+                    'null' => FALSE
+                )
+            ));
+        }
     }
 
     public function salvar_usuario($dados, $id=NULL)
@@ -39,6 +55,7 @@ class Usuarios_model extends CI_Model {
         }
 
         $auth = $this->load->database('auth', TRUE);
+        $this->ensure_desconto_valor_column($auth);
         $cpf_normalizado = preg_replace('/[^0-9]/', '', $usuario->cpf);
         $auth_user = $auth->select('id')->from('usuarios')
             ->where("(cpf = ".$auth->escape($usuario->cpf)." OR REPLACE(REPLACE(cpf, '.', ''), '-', '') = ".$auth->escape($cpf_normalizado).")", null, false)
@@ -67,6 +84,7 @@ class Usuarios_model extends CI_Model {
         }
 
         $auth = $this->load->database('auth', TRUE);
+        $this->ensure_desconto_valor_column($auth);
         $cpf_normalizado = preg_replace('/[^0-9]/', '', $usuario->cpf);
         $auth_user = $auth->select('id')->from('usuarios')
             ->where("(cpf = ".$auth->escape($usuario->cpf)." OR REPLACE(REPLACE(cpf, '.', ''), '-', '') = ".$auth->escape($cpf_normalizado).")", null, false)
@@ -79,7 +97,8 @@ class Usuarios_model extends CI_Model {
                 'cpf' => $usuario->cpf,
                 'senha' => isset($usuario->senha) ? $usuario->senha : '',
                 'status' => isset($usuario->status) ? $usuario->status : 1,
-                'desconto_maximo' => isset($usuario->desconto_maximo) ? $usuario->desconto_maximo : 0
+                'desconto_maximo' => isset($usuario->desconto_maximo) ? $usuario->desconto_maximo : 0,
+                'desconto_maximo_valor' => isset($usuario->desconto_maximo_valor) ? $usuario->desconto_maximo_valor : 0
             ));
             $auth_user_id = $auth->insert_id();
         }else{
@@ -89,7 +108,8 @@ class Usuarios_model extends CI_Model {
                 'email' => $usuario->email,
                 'cpf' => $usuario->cpf,
                 'status' => isset($usuario->status) ? $usuario->status : 1,
-                'desconto_maximo' => isset($usuario->desconto_maximo) ? $usuario->desconto_maximo : 0
+                'desconto_maximo' => isset($usuario->desconto_maximo) ? $usuario->desconto_maximo : 0,
+                'desconto_maximo_valor' => isset($usuario->desconto_maximo_valor) ? $usuario->desconto_maximo_valor : 0
             ));
         }
 

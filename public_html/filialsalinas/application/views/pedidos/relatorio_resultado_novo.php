@@ -2,10 +2,13 @@
     .card-resumo {
         border-radius: 6px; color: #fff; padding: 10px 12px; margin-bottom: 10px;
         position: relative; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+        height: 72px;
     }
     .card-resumo .card-icon { position: absolute; right: 8px; top: 6px; font-size: 32px; opacity: 0.18; }
     .card-resumo .card-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.85; }
     .card-resumo .card-value { font-size: 16px; font-weight: 700; margin-top: 2px; }
+    .card-resumo.is-clickable { cursor: pointer; }
+    .card-resumo .card-hint { font-size: 10px; margin-top: 2px; opacity: 0.9; }
     .card-receber { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
     .card-recebido { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
     .card-pagar { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
@@ -18,6 +21,8 @@
     .tabela-fluxo tbody td { vertical-align: middle; }
     .badge-pago { background: #11998e; color: #fff; font-size: 10px; }
     .badge-aberto { background: #f5576c; color: #fff; font-size: 10px; }
+    .badge-cancelada { background: #b71c1c; color: #fff; font-size: 10px; }
+    .linha-cancelada td { background: #ffebee !important; color: #b71c1c; }
 
     .breakdown-box {
         border: 1px solid #e7eaec; border-radius: 6px; padding: 12px 15px;
@@ -70,10 +75,11 @@
                             <!-- CARDS DE RESUMO -->
                             <div class="row">
                                 <div class="col-lg-4 col-md-6">
-                                    <div class="card-resumo card-receber">
+                                    <div class="card-resumo card-receber is-clickable" data-toggle="modal" data-target="#modal-total-a-receber">
                                         <i class="fa fa-arrow-up card-icon"></i>
-                                        <div class="card-label">(A) Total a Receber</div>
+                                        <div class="card-label">(A) Total a Receber por vencimento</div>
                                         <div class="card-value">R$ <?php echo number_format($card_total_a_receber, 2, ',', '.'); ?></div>
+                                        <div class="card-hint"><?php echo !empty($card_receitas_abertas) ? count($card_receitas_abertas) : 0; ?> parcelas abertas</div>
                                     </div>
                                 </div>
                                 <div class="col-lg-4 col-md-6">
@@ -486,12 +492,13 @@
                                         <thead><tr><th>Código</th><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Data Pago</th><th>Forma Pgto</th></tr></thead>
                                         <tbody>
                                             <?php if(!empty($pedidos_pag)): foreach($pedidos_pag as $r): ?>
-                                            <tr>
+                                            <?php $cancelada_relatorio = !empty($r->cancelada_relatorio); ?>
+                                            <tr class="<?php echo $cancelada_relatorio ? 'linha-cancelada' : ''; ?>">
                                                 <td><?php echo $r->id; ?></td>
                                                 <td><?php echo $r->cliente_pedido; ?></td>
                                                 <td><?php echo date("d/m/Y", strtotime($r->vencimento_receita)); ?></td>
-                                                <td>R$ <?php echo number_format($r->valor_receita, 2, ',', '.'); ?></td>
-                                                <td><?php echo ($r->status_receita == 0) ? '<span class="badge badge-aberto">Em aberto</span>' : '<span class="badge badge-pago">Pago</span>'; ?></td>
+                                                <td>R$ <?php echo number_format($r->valor_receita, 2, ',', '.'); ?><?php echo $cancelada_relatorio ? ' <span class="badge badge-cancelada">fora dos totais</span>' : ''; ?></td>
+                                                <td><?php echo $cancelada_relatorio ? '<span class="badge badge-cancelada">Cancelada</span>' : (($r->status_receita == 0) ? '<span class="badge badge-aberto">Em aberto</span>' : '<span class="badge badge-pago">Pago</span>'); ?></td>
                                                 <td><?php echo ($r->data_pago_receita) ? date("d/m/Y", strtotime($r->data_pago_receita)) : '-'; ?></td>
                                                 <td><?php echo isset($nomes_forma_pgto[$r->forma_pgto_receita]) ? $nomes_forma_pgto[$r->forma_pgto_receita] : '-'; ?></td>
                                             </tr>
@@ -550,6 +557,49 @@
                     <input type="hidden" id="page_receitas_val" value="<?php echo $page_receitas; ?>">
                     <input type="hidden" id="page_despesas_val" value="<?php echo $page_despesas; ?>">
 
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modal-total-a-receber" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Fechar"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title">Total a receber por vencimento</h4>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted" style="font-size:12px;">
+                    Este card sempre usa data de vencimento no periodo filtrado, mesmo quando a referencia do relatorio for pagamento.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-condensed table-striped" style="font-size:12px;">
+                        <thead>
+                            <tr><th>Pedido</th><th>Cliente</th><th>Vencimento</th><th>Forma Pgto</th><th>Vendedor</th><th class="text-right">Valor</th></tr>
+                        </thead>
+                        <tbody>
+                            <?php if(!empty($card_receitas_abertas)): foreach($card_receitas_abertas as $r): ?>
+                            <tr>
+                                <td>#<?php echo $r->pedido_id; ?></td>
+                                <td><?php echo $r->cliente_pedido; ?></td>
+                                <td><?php echo date('d/m/Y', strtotime($r->vencimento_receita)); ?></td>
+                                <td><?php echo isset($nomes_forma_pgto[$r->forma_pgto_receita]) ? $nomes_forma_pgto[$r->forma_pgto_receita] : '-'; ?></td>
+                                <td><?php echo $r->vendedor_pedido; ?></td>
+                                <td class="text-right">R$ <?php echo number_format($r->valor_receita, 2, ',', '.'); ?></td>
+                            </tr>
+                            <?php endforeach; else: ?>
+                            <tr><td colspan="6" class="text-center text-muted">Nenhuma parcela aberta por vencimento neste periodo</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight:700;">
+                                <td colspan="5">TOTAL</td>
+                                <td class="text-right">R$ <?php echo number_format($card_total_a_receber, 2, ',', '.'); ?></td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
             </div>
         </div>

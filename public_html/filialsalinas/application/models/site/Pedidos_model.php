@@ -7,46 +7,24 @@ class Pedidos_model extends CI_Model {
     }
 
 
-    public function get_pedidos_new()
+    public function get_pedidos_new($limite = 1000)
     {
         $this->db->select('pedidos.*');
         $this->db->select('clientes.nome as cliente_pedido, clientes.telefone as cliente_telefone');
         $this->db->select('entregadores.descricao as entregador');
+        $this->db->select('CASE WHEN COUNT(contas_receber.id) > 0 AND SUM(CASE WHEN contas_receber.status = 0 THEN 1 ELSE 0 END) > 0 THEN 0 ELSE 1 END as pedido_pago', false);
         $this->db->from('pedidos');
         $this->db->join('clientes', 'clientes.id=pedidos.clientes_id','left');
         $this->db->join('entregadores', 'entregadores.id=pedidos.entregadores_id','left');
+        $this->db->join('contas_receber', 'contas_receber.pedidos_id=pedidos.id','left');
+        $this->db->group_by('pedidos.id');
         $this->db->order_by('id','desc');
+        if($limite){
+            $this->db->limit((int) $limite);
+        }
         $query = $this->db->get();
         if($query->num_rows() > 0){
-
-
-            $data = $query->result();
-
-            //verificando se as contas do pedido foram todas pagas para marcar como pago
-            for ($i=0; $i < sizeof($data); $i++) { 
-
-                $data[$i]->pedido_pago = 1;
-
-                $this->db->select('status');
-                $this->db->from('contas_receber');
-                $this->db->where('pedidos_id', $data[$i]->id);
-                $receitas_peiddo = $this->db->get()->result();
-
-                foreach ($receitas_peiddo as $receita_peiddo):
-                    
-
-                    if($receita_peiddo->status == 0):
-
-                        $data[$i]->pedido_pago = 0;
-
-                    endif;
-
-                    
-                endforeach;
-                
-            }
-
-            return $data;
+            return $query->result();
 
         }else{
             return FALSE;

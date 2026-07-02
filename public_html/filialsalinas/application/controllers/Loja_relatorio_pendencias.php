@@ -27,6 +27,7 @@ class Loja_relatorio_pendencias extends TEC_Controller {
             $data['ticket_medio'] = ($totais->qtd > 0) ? ($totais->total / $totais->qtd) : 0;
 
             $data['pendencias'] = $this->pedidos_model->get_pendencias($inicio, $fim);
+            $data['pendencias_vendedores'] = $this->pedidos_model->get_pendencias_por_vendedor($inicio, $fim);
             $data['hoje'] = date('Y-m-d');
 
             $pedidos_ids = array();

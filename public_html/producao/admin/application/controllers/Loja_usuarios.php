@@ -83,7 +83,8 @@ function salvar_usuario(){
             'nome' => $this->input->post('nome'),
             'email' => $this->input->post('email'),
             'cpf' => $this->input->post('cpf'),
-            'desconto_maximo' => $this->input->post('desconto_maximo'),
+            'desconto_maximo' => str_replace(',', '.', $this->input->post('desconto_maximo')),
+            'desconto_maximo_valor' => str_replace(',', '.', str_replace('.', '', $this->input->post('desconto_maximo_valor'))),
             'pode_excluir_pedido' => $this->input->post('pode_excluir_pedido') ? 1 : 0,
 
         );

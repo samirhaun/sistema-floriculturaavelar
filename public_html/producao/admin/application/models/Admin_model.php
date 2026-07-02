@@ -6,8 +6,24 @@ class Admin_model extends CI_Model {
 
     public function __construct() {
         parent::__construct();
+        $this->ensure_local_schema();
         $this->ensure_auth_schema();
         $this->sync_local_users_context();
+    }
+
+    private function ensure_local_schema()
+    {
+        if(!$this->db->field_exists('desconto_maximo_valor', 'usuarios')){
+            $dbforge = $this->load->dbforge($this->db, TRUE);
+            $dbforge->add_column('usuarios', array(
+                'desconto_maximo_valor' => array(
+                    'type' => 'DECIMAL',
+                    'constraint' => '10,2',
+                    'default' => 0,
+                    'null' => FALSE
+                )
+            ));
+        }
     }
 
     public function validar_login($cpf='', $senha='')
@@ -44,6 +60,17 @@ class Admin_model extends CI_Model {
     private function ensure_auth_schema()
     {
         $auth = $this->load->database('auth', TRUE);
+        if(!$auth->field_exists('desconto_maximo_valor', 'usuarios')){
+            $dbforge = $this->load->dbforge($auth, TRUE);
+            $dbforge->add_column('usuarios', array(
+                'desconto_maximo_valor' => array(
+                    'type' => 'DECIMAL',
+                    'constraint' => '10,2',
+                    'default' => 0,
+                    'null' => FALSE
+                )
+            ));
+        }
         $auth->query("
             CREATE TABLE IF NOT EXISTS usuarios_contextos (
                 id INT NOT NULL AUTO_INCREMENT,
@@ -70,7 +97,7 @@ class Admin_model extends CI_Model {
             return;
         }
 
-        $usuarios = $this->db->select('id, nome, email, cpf, senha, status, desconto_maximo')
+        $usuarios = $this->db->select('id, nome, email, cpf, senha, status, desconto_maximo, desconto_maximo_valor')
             ->from('usuarios')
             ->where('cpf IS NOT NULL', null, false)
             ->where('cpf !=', '')
@@ -86,11 +113,20 @@ class Admin_model extends CI_Model {
                     'cpf' => $usuario->cpf,
                     'senha' => $usuario->senha,
                     'status' => $usuario->status,
-                    'desconto_maximo' => isset($usuario->desconto_maximo) ? $usuario->desconto_maximo : 0
+                    'desconto_maximo' => isset($usuario->desconto_maximo) ? $usuario->desconto_maximo : 0,
+                    'desconto_maximo_valor' => isset($usuario->desconto_maximo_valor) ? $usuario->desconto_maximo_valor : 0
                 ));
                 $auth_user_id = $auth->insert_id();
             }else{
                 $auth_user_id = $auth_user->id;
+                $auth->where('id', $auth_user_id)->update('usuarios', array(
+                    'nome' => $usuario->nome,
+                    'email' => $usuario->email,
+                    'cpf' => $usuario->cpf,
+                    'status' => $usuario->status,
+                    'desconto_maximo' => isset($usuario->desconto_maximo) ? $usuario->desconto_maximo : 0,
+                    'desconto_maximo_valor' => isset($usuario->desconto_maximo_valor) ? $usuario->desconto_maximo_valor : 0
+                ));
             }
 
             $this->grant_contexto($auth_user_id, $this->contexto);
