@@ -1004,8 +1004,8 @@ function solicitar_codigo_desconto()
 
     foreach ($numeros as $numero) {
         $postData = [
-            "queueId" => 98,
-            "apiKey" => 'ca21b412646e426c862dc63f9f374c68',
+            "queueId" => 321,
+            "apiKey" => 'cbc5216e0de44eabba04ef0a74c711bc',
             "templateId" => 0,
             "headerFile" => "",
             "varsdata" => "",
