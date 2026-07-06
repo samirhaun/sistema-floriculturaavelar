@@ -986,7 +986,7 @@ function solicitar_codigo_desconto()
 
     $text = "🔐 *AUTORIZACAO DE DESCONTO*\n\n"
         . "Vendedor: *{$vendedor}*\n"
-        . "Desconto solicitado: *{$pct}%*\n\n"
+        . "Desconto solicitado: *" . number_format($pct, 2) . "%*\n\n"
         . "Codigo: *{$code}*\n"
         . "Valido por 15 minutos.";
 

@@ -994,12 +994,12 @@ function solicitar_codigo_desconto()
 
     $text = "🔐 *AUTORIZACAO DE DESCONTO*\n\n"
         . "Vendedor: *{$vendedor}*\n"
-        . "Desconto solicitado: *{$pct}%*\n\n"
+        . "Desconto solicitado: *" . number_format($pct, 2) . "%*\n\n"
         . "Codigo: *{$code}*\n"
         . "Valido por 15 minutos.";
 
     $apiUrl = 'https://avelar.atenderbem.com/int/enqueueMessageToSend';
-    $numeros = ['38984011923', '38988519293'];
+    $numeros = ['38984011923', '38988519293', '38984029105', '38991281867'];
     $erros = [];
 
     foreach ($numeros as $numero) {
