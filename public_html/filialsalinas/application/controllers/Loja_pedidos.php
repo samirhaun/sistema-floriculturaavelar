@@ -6,6 +6,7 @@ class Loja_pedidos extends TEC_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->model('loja/pedidos_model');
+        $this->load->model('loja/taxas_cartao_model');
 
         $this->set_menu_active(
                             array(
@@ -27,7 +28,7 @@ class Loja_pedidos extends TEC_Controller {
         //CHECK HABILIDADE
         if(!check_habilidade('visualizar_pedidos')): echo 'Acesso negado.'; exit; endif;
 
-        $data['pedidos'] =  $this->pedidos_model->get_pedidos();
+        $data['pedidos'] =  $this->pedidos_model->get_pedidos(null);
 
         if($this->input->get('type')){
             $notification = new stdClass;
@@ -51,7 +52,7 @@ class Loja_pedidos extends TEC_Controller {
         //CHECK HABILIDADE
         if(!check_habilidade('visualizar_pedidos')): echo 'Acesso negado.'; exit; endif;
 
-        $data['pedidos'] =  $this->pedidos_model->get_pedidos();
+        $data['pedidos'] =  $this->pedidos_model->get_pedidos(null);
 
         $usuario_logado = $this->db->select('pode_excluir_pedido')->from('usuarios')->where('id', $_SESSION['usuario']->id)->get()->row();
         $pode_excluir = $usuario_logado && $usuario_logado->pode_excluir_pedido;
@@ -350,12 +351,7 @@ class Loja_pedidos extends TEC_Controller {
 
         $this->db->trans_start();
 
-        $this->db->where('contas_receber_id', $id);
-        $this->db->where_in('origem', array('taxa_maquininha', 'taxa_antecipacao'));
-        $this->db->delete('contas_pagar');
-
-        $this->db->where('pedidos_id', $id);
-        $this->db->delete('contas_receber');
+        $this->taxas_cartao_model->excluir_financeiro_pedido($id);
 
         $this->db->where('pedidos_id', $id);
         $this->db->delete('pedido_produto');

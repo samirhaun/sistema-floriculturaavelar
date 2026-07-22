@@ -120,6 +120,73 @@
                         </div>
                     </div>
 
+                    <!-- FORMAS DE PAGAMENTO -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="breakdown-box">
+                                <h5><i class="fa fa-credit-card text-warning"></i> Vendas por forma de pagamento</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-condensed" style="margin-bottom:0;">
+                                        <thead>
+                                            <tr>
+                                                <th>Forma de pagamento</th>
+                                                <th class="text-right">Pedidos</th>
+                                                <th class="text-right">Parcelas</th>
+                                                <th class="text-right">Total</th>
+                                                <th class="text-right" style="width:15%;">%</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php
+                                            $nomes_forma_pgto = array(
+                                                1 => 'Dinheiro', 9 => 'Pix', 2 => 'Débito',
+                                                3 => 'Crédito 1x', 4 => 'Crédito 2x', 5 => 'Crédito 3x',
+                                                6 => 'Crédito 4x', 7 => 'Duplicata', 8 => 'Cheque'
+                                            );
+                                            if(!empty($vendas_formas_pgto)):
+                                                foreach($vendas_formas_pgto as $f):
+                                                    $total_fp = (float) $f->total;
+                                                    $pct_fp = $total_vendido > 0 ? ($total_fp / $total_vendido * 100) : 0;
+                                                    $nome_fp = isset($nomes_forma_pgto[$f->forma_pgto]) ? $nomes_forma_pgto[$f->forma_pgto] : 'Outros';
+                                                    $eh_cartao = in_array((int) $f->forma_pgto, array(2, 3, 4, 5, 6));
+                                                    $badge_cartao = $eh_cartao ? ' <span class="badge" style="background:#f8ac59; color:#fff; font-size:9px;">D+1</span>' : '';
+                                            ?>
+                                            <tr>
+                                                <td><strong><?php echo $nome_fp; ?></strong><?php echo $badge_cartao; ?></td>
+                                                <td class="text-right"><?php echo number_format($f->total_pedidos, 0, ',', '.'); ?></td>
+                                                <td class="text-right"><?php echo number_format($f->total_parcelas, 0, ',', '.'); ?></td>
+                                                <td class="text-right"><strong>R$ <?php echo number_format($total_fp, 2, ',', '.'); ?></strong></td>
+                                                <td class="text-right">
+                                                    <div style="display:flex; align-items:center; gap:8px;">
+                                                        <div style="flex:1; height:10px; background:#e0e0e0; border-radius:5px; overflow:hidden;">
+                                                            <div style="width:<?php echo min(100, round($pct_fp)); ?>%; height:100%; background:#f8ac59; border-radius:5px;"></div>
+                                                        </div>
+                                                        <span style="font-size:10px; min-width:35px; text-align:right;"><?php echo number_format($pct_fp, 1); ?>%</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                            <?php else: ?>
+                                                <tr><td colspan="5" class="text-center text-muted">Nenhuma venda por forma de pagamento encontrada</td></tr>
+                                            <?php endif; ?>
+                                        </tbody>
+                                        <?php if(!empty($vendas_formas_pgto)): ?>
+                                        <tfoot>
+                                            <tr style="font-weight:700; border-top:2px solid #ddd;">
+                                                <td>TOTAL</td>
+                                                <td></td>
+                                                <td></td>
+                                                <td class="text-right">R$ <?php echo number_format($total_vendido, 2, ',', '.'); ?></td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                        <?php endif; ?>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- PRODUTOS -->
                     <div class="row">
                         <div class="col-md-12">

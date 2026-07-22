@@ -30,6 +30,7 @@ class Loja_relatorio_vendas extends TEC_Controller {
             $data['produtos'] = $this->pedidos_model->get_vendas_por_produto($inicio, $fim);
             $data['detalhe_produtos'] = $this->pedidos_model->get_vendas_detalhe_produto($inicio, $fim);
             $data['vendas_vendedores'] = $this->pedidos_model->get_vendas_por_vendedor($inicio, $fim);
+            $data['vendas_formas_pgto'] = $this->pedidos_model->get_vendas_por_forma_pgto($inicio, $fim);
             $descontos = $this->pedidos_model->get_vendas_descontos($inicio, $fim);
             $data['total_descontos'] = $descontos ? $descontos->total_descontos : 0;
             $data['qtd_pedidos_desconto'] = $descontos ? $descontos->qtd_pedidos : 0;

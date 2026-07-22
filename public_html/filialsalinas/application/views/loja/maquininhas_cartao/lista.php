@@ -48,6 +48,7 @@
                                                             <th>Cred. 2x</th>
                                                             <th>Cred. 3x</th>
                                                             <th>Cred. 4x</th>
+                                                            <th>Antecipacao</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -60,6 +61,7 @@
                                                                 <td><?php echo number_format($taxa->taxa_credito_2x, 2, ',', '.') ?>%</td>
                                                                 <td><?php echo number_format($taxa->taxa_credito_3x, 2, ',', '.') ?>%</td>
                                                                 <td><?php echo number_format($taxa->taxa_credito_4x, 2, ',', '.') ?>%</td>
+                                                                <td><?php echo number_format($taxa->taxa_antecipacao, 4, ',', '.') ?>%</td>
                                                             </tr>
                                                         <?php endforeach; ?>
                                                     </tbody>

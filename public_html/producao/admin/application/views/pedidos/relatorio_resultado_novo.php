@@ -202,33 +202,41 @@
 
                             <!-- FORMA PGTO -->
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-12">
                                     <div class="breakdown-box">
-                                        <h5><i class="fa fa-arrow-up text-info"></i> Receitas por forma de pagamento</h5>
+                                        <h5><i class="fa fa-arrow-up text-info"></i> Entradas por forma de pagamento</h5>
+                                        <p class="text-muted" style="margin-top:-5px;">Total vendido considera a data da venda. Total recebido considera a data em que o valor entrou.</p>
                                         <table class="table table-condensed">
-                                            <thead><tr><th>Forma</th><th class="text-right">Pago</th><th class="text-right">Aberto</th><th class="text-right">Total</th></tr></thead>
+                                            <thead><tr><th>Forma de pagamento</th><th class="text-right">Vendas realizadas<br><small class="text-muted">pela data da venda</small></th><th class="text-right">Valores recebidos<br><small class="text-muted">pela data do recebimento</small></th></tr></thead>
                                             <tbody>
-                                                <?php foreach($resumo_receitas as $fp => $v):
+                                                <?php
+                                                $total_entradas_vendido = 0;
+                                                $total_entradas_recebido = 0;
+                                                if(!empty($comparativo_entradas)):
+                                                foreach($comparativo_entradas as $entrada):
+                                                    $fp = (int) $entrada->forma_pgto;
                                                     $nome_fp = isset($nomes_forma_pgto[$fp]) ? $nomes_forma_pgto[$fp] : 'Outros';
+                                                    $total_entradas_vendido += $entrada->total_vendido;
+                                                    $total_entradas_recebido += $entrada->total_recebido;
                                                 ?>
                                                 <tr>
                                                     <td><?php echo $nome_fp; ?></td>
-                                                    <td class="text-right">R$ <?php echo number_format($v['pago'], 2, ',', '.'); ?></td>
-                                                    <td class="text-right">R$ <?php echo number_format($v['aberto'], 2, ',', '.'); ?></td>
-                                                    <td class="text-right"><strong>R$ <?php echo number_format($v['pago'] + $v['aberto'], 2, ',', '.'); ?></strong></td>
+                                                    <td class="text-right">R$ <?php echo number_format($entrada->total_vendido, 2, ',', '.'); ?></td>
+                                                    <td class="text-right"><strong>R$ <?php echo number_format($entrada->total_recebido, 2, ',', '.'); ?></strong></td>
                                                 </tr>
-                                                <?php endforeach; ?>
-                                                <?php if(empty($resumo_receitas)): ?>
-                                                <tr><td colspan="4" class="text-center text-muted">Nenhum registro</td></tr>
+                                                <?php endforeach; else: ?>
+                                                <tr><td colspan="3" class="text-center text-muted">Nenhum registro</td></tr>
                                                 <?php endif; ?>
                                             </tbody>
-                                            <?php if(!empty($resumo_receitas)): ?>
-                                            <tfoot><tr style="font-weight:700; border-top:2px solid #ddd;"><td>TOTAL</td><td class="text-right">R$ <?php echo number_format($total_r_pago, 2, ',', '.'); ?></td><td class="text-right">R$ <?php echo number_format($total_r_aberto, 2, ',', '.'); ?></td><td class="text-right">R$ <?php echo number_format($total_r_pago + $total_r_aberto, 2, ',', '.'); ?></td></tr></tfoot>
+                                            <?php if(!empty($comparativo_entradas)): ?>
+                                            <tfoot><tr style="font-weight:700; border-top:2px solid #ddd;"><td>TOTAL</td><td class="text-right">R$ <?php echo number_format($total_entradas_vendido, 2, ',', '.'); ?></td><td class="text-right">R$ <?php echo number_format($total_entradas_recebido, 2, ',', '.'); ?></td></tr></tfoot>
                                             <?php endif; ?>
                                         </table>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
                                     <div class="breakdown-box">
                                         <h5><i class="fa fa-arrow-down text-danger"></i> Despesas por forma de pagamento</h5>
                                         <table class="table table-condensed">
@@ -252,6 +260,73 @@
                                             <tfoot><tr style="font-weight:700; border-top:2px solid #ddd;"><td>TOTAL</td><td class="text-right">R$ <?php echo number_format($total_d_pago, 2, ',', '.'); ?></td><td class="text-right">R$ <?php echo number_format($total_d_aberto, 2, ',', '.'); ?></td><td class="text-right">R$ <?php echo number_format($total_d_pago + $total_d_aberto, 2, ',', '.'); ?></td></tr></tfoot>
                                             <?php endif; ?>
                                         </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- FECHAMENTO CARTAO -->
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="breakdown-box" style="background:#f0fbf9; border:1px solid #11998e;">
+                                        <h5><i class="fa fa-bank text-success"></i> Fechamento de cartão (bruto &minus; taxas = líquido no banco)</h5>
+                                        <table class="table table-condensed">
+                                            <thead><tr><th>Forma de pagamento</th><th class="text-right">Bruto</th><th class="text-right">(−) Taxa maquininha</th><th class="text-right">(−) Antecipação</th><th class="text-right">= Líquido</th></tr></thead>
+                                            <tbody>
+                                                <?php
+                                                $fech_total_bruto = 0; $fech_total_maquininha = 0; $fech_total_antecipacao = 0;
+                                                if(!empty($fechamento_cartao)):
+                                                    foreach($fechamento_cartao as $fc):
+                                                        $eh_antecipacao_agrupada = ((int) $fc->forma_pgto === 0);
+                                                        $fp_nome_fc = isset($nomes_forma_pgto[$fc->forma_pgto]) ? $nomes_forma_pgto[$fc->forma_pgto] : 'Outros';
+                                                        if($eh_antecipacao_agrupada) $fp_nome_fc = 'Antecipação agrupada por bandeira';
+                                                        $bruto_fc = (float) $fc->bruto;
+                                                        $taxa_maquininha_fc = (float) $fc->taxa_maquininha;
+                                                        $antecipacao_fc = (float) $fc->antecipacao;
+                                                        $liquido_fc = $bruto_fc - $taxa_maquininha_fc - $antecipacao_fc;
+                                                        $fech_total_bruto += $bruto_fc;
+                                                        $fech_total_maquininha += $taxa_maquininha_fc;
+                                                        $fech_total_antecipacao += $antecipacao_fc;
+                                                ?>
+                                                <tr>
+                                                    <td><?php echo $fp_nome_fc; ?></td>
+                                                    <td class="text-right"><?php echo $eh_antecipacao_agrupada ? '—' : 'R$ '.number_format($bruto_fc, 2, ',', '.'); ?></td>
+                                                    <td class="text-right text-danger"><?php echo $eh_antecipacao_agrupada ? '—' : 'R$ '.number_format($taxa_maquininha_fc, 2, ',', '.'); ?></td>
+                                                    <td class="text-right text-danger"><?php echo $antecipacao_fc > 0 ? 'R$ '.number_format($antecipacao_fc, 2, ',', '.') : '—'; ?></td>
+                                                    <td class="text-right text-success"><?php echo $eh_antecipacao_agrupada ? '—' : '<strong>R$ '.number_format($liquido_fc, 2, ',', '.').'</strong>'; ?></td>
+                                                </tr>
+                                                <?php
+                                                    endforeach;
+                                                else:
+                                                ?>
+                                                <tr><td colspan="5" class="text-center text-muted">Nenhuma venda de cartão no período</td></tr>
+                                                <?php endif; ?>
+                                            </tbody>
+                                            <?php if(!empty($fechamento_cartao)): ?>
+                                            <tfoot>
+                                                <tr style="font-weight:700; border-top:2px solid #11998e;">
+                                                    <td>TOTAL CARTÃO</td>
+                                                    <td class="text-right">R$ <?php echo number_format($fech_total_bruto, 2, ',', '.'); ?></td>
+                                                    <td class="text-right text-danger">R$ <?php echo number_format($fech_total_maquininha, 2, ',', '.'); ?></td>
+                                                    <td class="text-right text-danger">R$ <?php echo number_format($fech_total_antecipacao, 2, ',', '.'); ?></td>
+                                                    <td class="text-right text-success">R$ <?php echo number_format($fech_total_bruto - $fech_total_maquininha - $fech_total_antecipacao, 2, ',', '.'); ?></td>
+                                                </tr>
+                                                <?php
+                                                // total que deve entrar no banco = Pix (forma 9) + cartao liquido
+                                                $fech_pix = 0;
+                                                if(isset($resumo_receitas[9])):
+                                                    $fech_pix = $resumo_receitas[9]['pago'] + $resumo_receitas[9]['aberto'];
+                                                endif;
+                                                ?>
+                                                <tr style="font-weight:700; background:#e8f8f5;">
+                                                    <td colspan="4">PREVISÃO NO BANCO (Pix + Cartão líquido)</td>
+                                                    <td class="text-right text-success" style="font-size:14px;">R$ <?php echo number_format($fech_pix + $fech_total_bruto - $fech_total_maquininha - $fech_total_antecipacao, 2, ',', '.'); ?></td>
+                                                </tr>
+                                            </tfoot>
+                                            <?php endif; ?>
+                                        </table>
+                                        <p class="text-muted" style="font-size:11px; margin-top:5px;">
+                                            <i class="fa fa-info-circle"></i> O valor líquido do cartão é o que deve constar no extrato bancário (taxas já descontadas pela maquininha).
+                                        </p>
                                     </div>
                                 </div>
                             </div>

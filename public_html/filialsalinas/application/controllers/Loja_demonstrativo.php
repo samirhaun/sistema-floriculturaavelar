@@ -188,6 +188,11 @@ class Loja_demonstrativo extends TEC_Controller {
                 $data['filtro_entregador'], $data['filtro_forma_pgto']
             );
 
+            $data['comparativo_entradas'] = $this->pedidos_model->get_fluxo_entradas_vendido_recebido_por_forma(
+                $inicio, $fim, $data['filtro_origem'], $data['filtro_vendedor'],
+                $data['filtro_entregador'], $data['filtro_forma_pgto']
+            );
+
             $data['totais_forma_pgto_despesas'] = $this->pedidos_model->get_demonstrativo_totais_por_forma_pgto_despesas(
                 $inicio, $fim, $data['filtro_plano_conta'], $data['filtro_referencia'],
                 $data['filtro_forma_pgto'], $data['filtro_situacao_pgto']

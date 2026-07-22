@@ -93,7 +93,7 @@
                                                         <td><input type="text" name="taxa_credito_2x[]" class="form-control taxa-mask" value="<?php echo number_format($taxa->taxa_credito_2x, 2, ',', '.') ?>"></td>
                                                         <td><input type="text" name="taxa_credito_3x[]" class="form-control taxa-mask" value="<?php echo number_format($taxa->taxa_credito_3x, 2, ',', '.') ?>"></td>
                                                         <td><input type="text" name="taxa_credito_4x[]" class="form-control taxa-mask" value="<?php echo number_format($taxa->taxa_credito_4x, 2, ',', '.') ?>"></td>
-                                                        <td><input type="text" name="taxa_antecipacao[]" class="form-control taxa-mask" value="<?php echo number_format($taxa->taxa_antecipacao, 2, ',', '.') ?>"></td>
+                                                        <td><input type="text" name="taxa_antecipacao[]" class="form-control taxa-antecipacao-mask" value="<?php echo number_format($taxa->taxa_antecipacao, 4, ',', '.') ?>"></td>
                                                         <td class="text-center"><button type="button" class="btn btn-white remover-taxa"><i class="fa fa-trash"></i></button></td>
                                                     </tr>
                                                 <?php endforeach; ?>
@@ -133,7 +133,7 @@
         <td><input type="text" name="taxa_credito_2x[]" class="form-control taxa-mask" value="0,00"></td>
         <td><input type="text" name="taxa_credito_3x[]" class="form-control taxa-mask" value="0,00"></td>
         <td><input type="text" name="taxa_credito_4x[]" class="form-control taxa-mask" value="0,00"></td>
-        <td><input type="text" name="taxa_antecipacao[]" class="form-control taxa-mask" value="0,00"></td>
+        <td><input type="text" name="taxa_antecipacao[]" class="form-control taxa-antecipacao-mask" value="0,0000"></td>
         <td class="text-center"><button type="button" class="btn btn-white remover-taxa"><i class="fa fa-trash"></i></button></td>
     </tr>
 </script>
@@ -143,6 +143,7 @@
         function aplicaMascaraTaxa()
         {
             $('.taxa-mask').mask('000,00', {reverse: true});
+            $('.taxa-antecipacao-mask').mask('000,0000', {reverse: true});
         }
 
         aplicaMascaraTaxa();

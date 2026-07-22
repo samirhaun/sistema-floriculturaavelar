@@ -56,25 +56,22 @@
                   <?php
                     $vendedor_sel = null;
                     foreach ($vendedores as $v) {
-                      if (strcasecmp(trim($v->descricao), trim($usuario->nome)) === 0) {
+                      if (isset($pedido) && $v->id == $pedido->vendedores_id) {
+                        $vendedor_sel = $v;
+                        break;
+                      }
+                      if (!isset($pedido) && strcasecmp(trim($v->descricao), trim($usuario->nome)) === 0) {
                         $vendedor_sel = $v;
                         break;
                       }
                     }
                   ?>
-                  <?php if ($vendedor_sel): ?>
-                    <select class="form-control" id="vendedores_id_select" disabled>
-                      <option value="<?php echo $vendedor_sel->id ?>" selected><?php echo $vendedor_sel->descricao; ?></option>
-                    </select>
-                    <input type="hidden" name="vendedores_id" value="<?php echo $vendedor_sel->id ?>">
-                  <?php else: ?>
-                    <select required="" class="form-control" name="vendedores_id" id="vendedores_id_select">
-                      <option value="">Selecione</option>
-                      <?php foreach ($vendedores as $key => $vendedor): ?>
-                        <option <?php if (isset($pedido) && $vendedor->id == $pedido->vendedores_id){echo 'selected';} ?> value="<?php echo $vendedor->id ?>"><?php echo $vendedor->descricao; ?></option>
-                      <?php endforeach ?>
-                    </select>
-                  <?php endif; ?>
+                  <select required="" class="form-control" name="vendedores_id" id="vendedores_id_select">
+                    <option value="">Selecione</option>
+                    <?php foreach ($vendedores as $key => $vendedor): ?>
+                      <option <?php if ($vendedor_sel && $vendedor->id == $vendedor_sel->id){echo 'selected';} ?> value="<?php echo $vendedor->id ?>"><?php echo $vendedor->descricao; ?></option>
+                    <?php endforeach ?>
+                  </select>
                 </div>
               </div>
 
@@ -554,8 +551,7 @@
           <?php 
 
           if(isset($pedido)):
-            $desconto = explode('.',$pedido->valor_desconto);
-            $desconto = $desconto[0];
+            $desconto = rtrim(rtrim(number_format((float) $pedido->valor_desconto, 2, ',', ''), '0'), ',');
           else:
             $desconto = 0;
           endif;
@@ -576,9 +572,10 @@
               <input 
               name="valor_desconto" 
               id="valor_desconto" 
-              class="form-control valor_mask_new" 
+              class="form-control"
+              inputmode="decimal"
               value="<?php echo $desconto; ?>" 
-              onkeyup="calcula_pedito_total()"
+              oninput="calcula_pedito_total()"
               >
             </div>
           </div>
@@ -692,6 +689,7 @@
 
  <!-- ITEM PRODUTO EDITANDO -->
  <div class="row item"> 
+    <input type="hidden" name="contas_receber_id[]" value="<?php echo $conta_receber->id; ?>">
 
           <div class="col-sm-2 col-xs-12">
                 <div class="form-group">
@@ -764,6 +762,7 @@
                   </select>
                   </div>
               </div>
+
         
 
           
@@ -897,6 +896,7 @@
                   </select>
                   </div>
               </div>
+
         
 
           
@@ -1189,6 +1189,7 @@
                   </select>
                   </div>
               </div>
+
         
 
           
@@ -1564,13 +1565,18 @@ function modelo_valor(elementos){
     var auth_pct_solicitado = 0;
     var auth_em_progresso = false;
 
+    function numero_decimal(valor){
+      return parseFloat(String(valor || '').trim().replace(',', '.')) || 0;
+    }
+
     function calcula_pedito_total(){
 
       if(auth_em_progresso) return;
 
-      var valor_produtos = $('#valor').val();
-      var frete = $('#valor_frete').val();
+      var valor_produtos = numero_decimal($('#valor').val());
+      var frete = numero_decimal($('#valor_frete').val());
       var desconto = $('#valor_desconto').val();
+      var desconto_num = numero_decimal(desconto);
       var tipo_desconto_atual = $('#tipo_desconto').val();
 
       if(auth_desconto_ok && desconto != desconto_pendente_valor){
@@ -1578,29 +1584,29 @@ function modelo_valor(elementos){
       }
 
       //VALIDANDO DESCONTO DO USUARIO
-      if(desconto > 0){
+      if(desconto_num > 0){
 
         var total_desconto_usuario = "<?php echo $usuario->desconto_maximo ?>";
         var total_desconto_usuario_valor = "<?php echo isset($usuario->desconto_maximo_valor) ? $usuario->desconto_maximo_valor : 0 ?>";
 
         var limite_pct = parseFloat(total_desconto_usuario);
         var limite_valor = parseFloat(total_desconto_usuario_valor);
-        var base_desconto = parseFloat(valor_produtos) + parseFloat(frete);
+        var base_desconto = valor_produtos + frete;
         if(tipo_desconto_atual == 'porcentagem'){
-          var pct_aplicado = parseFloat(desconto);
-          var desconto_reais = base_desconto * parseFloat(desconto) / 100;
+          var pct_aplicado = desconto_num;
+          var desconto_reais = base_desconto * desconto_num / 100;
         }else{
-          var pct_aplicado = base_desconto > 0 ? (parseFloat(desconto) / base_desconto) * 100 : 0;
-          var desconto_reais = parseFloat(desconto);
+          var pct_aplicado = base_desconto > 0 ? (desconto_num / base_desconto) * 100 : 0;
+          var desconto_reais = desconto_num;
         }
         var excedeu_pct = limite_pct > 0 && pct_aplicado > limite_pct;
-        var excedeu_valor = limite_valor > 0 && desconto_reais > limite_valor;
+        var excedeu_valor = tipo_desconto_atual == 'dinheiro' && limite_valor > 0 && desconto_reais > limite_valor;
 
         if((excedeu_pct || excedeu_valor) && !auth_desconto_ok){
           desconto_pendente_valor = desconto;
           auth_pct_solicitado = pct_aplicado;
           var desconto_geral = 0;
-          var total_geral = parseFloat(valor_produtos) + parseFloat(frete) - 0;
+          var total_geral = valor_produtos + frete;
           $('#valor_total').val(total_geral.toFixed(2));
 
           auth_em_progresso = true;
@@ -1613,6 +1619,8 @@ function modelo_valor(elementos){
           $('#auth-limite').text(limite_texto.join(' ou '));
           $('#auth-section-solicitar').show();
           $('#auth-section-codigo').hide();
+          $('#btn-solicitar-codigo').prop('disabled', false).html('Solicitar Codigo').show();
+          $('#btn-validar-codigo').prop('disabled', false).html('Validar Codigo').hide();
           $('#auth-error').hide();
           $('#modal-auth-desconto').modal('show');
           return;
@@ -1624,7 +1632,7 @@ function modelo_valor(elementos){
         var desconto_geral = 0;
       }
 
-      var total_geral = parseFloat(valor_produtos) + parseFloat(frete) - parseFloat(desconto_geral);
+      var total_geral = valor_produtos + frete - desconto_geral;
       $('#valor_total').val(total_geral.toFixed(2));
 
     }
@@ -1662,7 +1670,10 @@ function modelo_valor(elementos){
   <script type="text/javascript">
   $(function() {
 
-    $('#btn-solicitar-codigo').on('click', function(){
+    $('#btn-solicitar-codigo').off('click.authDesconto').on('click.authDesconto', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+
       var btn = $(this);
       var pct = auth_pct_solicitado;
       btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Enviando...');
@@ -1692,7 +1703,10 @@ function modelo_valor(elementos){
       });
     });
 
-    $('#btn-validar-codigo').on('click', function(){
+    $('#btn-validar-codigo').off('click.authDesconto').on('click.authDesconto', function(e){
+      e.preventDefault();
+      e.stopPropagation();
+
       var btn = $(this);
       var codigo = $('#auth-codigo-input').val().trim();
       $('#auth-error').hide();
@@ -1730,7 +1744,12 @@ function modelo_valor(elementos){
       });
     });
 
-    $('#modal-auth-desconto').on('hidden.bs.modal', function(){
+    $('#modal-auth-desconto').off('shown.bs.modal.authDesconto').on('shown.bs.modal.authDesconto', function(){
+      $('#btn-solicitar-codigo').blur();
+      $(this).find('.btn-default').focus();
+    });
+
+    $('#modal-auth-desconto').off('hidden.bs.modal.authDesconto').on('hidden.bs.modal.authDesconto', function(){
       if(!auth_desconto_ok){
         auth_em_progresso = false;
         $('#valor_desconto').val(0);
@@ -1738,8 +1757,8 @@ function modelo_valor(elementos){
       }
       $('#auth-section-solicitar').show();
       $('#auth-section-codigo').hide();
-      $('#btn-solicitar-codigo').show();
-      $('#btn-validar-codigo').hide();
+      $('#btn-solicitar-codigo').prop('disabled', false).html('Solicitar Codigo').show();
+      $('#btn-validar-codigo').prop('disabled', false).html('Validar Codigo').hide();
       $('#auth-error').hide();
       $('#auth-codigo-input').val('');
     });
@@ -1846,7 +1865,6 @@ $('.data_mask').datepicker({
     $('.hora_mask').mask('00:00');
     // $('.soma_valor_unitario').mask('00000,00', {reverse: true});
     $('.valor_mask').mask('00000,00', {reverse: true});
-    $('.valor_mask_new').mask('00000.00', {reverse: true});
     $('.valor_porcentagem_mask').mask('00', {reverse: true});
     $('[name=cep_entrega]').mask('00000-000');
 
@@ -1870,6 +1888,14 @@ $('.data_mask').datepicker({
 
     var taxasMaquininhas = <?php echo json_encode(!empty($maquininhas_cartao_taxas) ? $maquininhas_cartao_taxas : array()); ?>;
     var maquininhasData = <?php echo json_encode(!empty($maquininhas_cartao) ? $maquininhas_cartao : array()); ?>;
+
+    function atualizaObrigatoriedadeCartao(linha)
+    {
+        var $linha = $(linha);
+        var forma = parseInt($linha.find('[name="forma_pgto_receita[]"]').val());
+        var ehCartao = [2, 3, 4, 5, 6].indexOf(forma) !== -1;
+        $linha.find('.maquininha-cartao-select, .maquininha-taxa-select').prop('required', ehCartao);
+    }
 
     function atualizaSelectTaxasMaquininha(linha)
     {
@@ -1911,6 +1937,7 @@ $('.data_mask').datepicker({
             allowClear: true
         });
 
+        atualizaObrigatoriedadeCartao($linha);
         atualizaPreviewTaxa($linha);
     }
 
@@ -2024,14 +2051,28 @@ $('.data_mask').datepicker({
 
     function dataLancamentoFinanceiro($item, formaPgto) {
         var forma = parseInt(formaPgto);
-        if ([3, 4, 5, 6].indexOf(forma) !== -1) {
-            var dataSolicitacao = parseDataBr($('[name="data_solicitacao"]').val()) || new Date();
-            return { data: proximoDiaUtil(dataSolicitacao), detalhe: 'proximo dia util' };
+        if ([2, 3, 4, 5, 6].indexOf(forma) !== -1) {
+            var dataPagamento = parseDataBr($item.find('[name="data_pago_receita[]"]').val()) || new Date();
+            return { data: proximoDiaUtil(dataPagamento), detalhe: 'liquidacao prevista (D+1 util)' };
         }
 
         var dataPago = parseDataBr($item.find('[name="data_pago_receita[]"]').val());
         var dataVencimento = parseDataBr($item.find('[name="data_vencimento_receita[]"]').val()) || new Date();
         return { data: dataPago || dataVencimento, detalhe: dataPago ? 'data paga' : 'vencimento' };
+    }
+
+    function atualizaCamposDataCartao($linha) {
+        var $item = $linha.closest('.row.item');
+        if (!$item.length) $item = $linha.closest('.item');
+        if (!$item.length) return;
+
+        var $vencimento = $item.find('[name="data_vencimento_receita[]"]');
+        var $pagamento = $item.find('[name="data_pago_receita[]"]');
+        var $grupoVencimento = $vencimento.closest('.form-group');
+        var $grupoPagamento = $pagamento.closest('.form-group');
+        $grupoVencimento.find('label').text('Data Vencimento: *');
+        $grupoPagamento.find('label').text('Data Pago:');
+        $pagamento.prop('readonly', false);
     }
 
     function atualizaPreviewTaxa($linha) {
@@ -2093,19 +2134,28 @@ $('.data_mask').datepicker({
         var html = descricao + ' | Maquininha: ' + percentual.toFixed(2) + '% = <strong>R$ ' + taxaValor.toFixed(2).replace('.', ',') + '</strong>';
 
         if (percentual_antecipacao && !isNaN(percentual_antecipacao) && percentual_antecipacao > 0 && parseInt(formaPgto) !== 2) {
-            var antecipacaoValor = Math.round(valor * percentual_antecipacao) / 100;
-            html += ' | Antecipação: ' + percentual_antecipacao.toFixed(2) + '% = <strong>R$ ' + antecipacaoValor.toFixed(2).replace('.', ',') + '</strong>';
+            var baseAntecipacao = Math.round((valor - taxaValor) * 100) / 100;
+            var antecipacaoValor = Math.round(baseAntecipacao * percentual_antecipacao) / 100;
+            html += ' | Antecipação agrupada: ' + percentual_antecipacao.toFixed(3) + '% sobre R$ ' + baseAntecipacao.toFixed(2).replace('.', ',') + ' = <strong>R$ ' + antecipacaoValor.toFixed(2).replace('.', ',') + '</strong> (estimativa desta venda)';
         }
 
         var lancamento = dataLancamentoFinanceiro($item, formaPgto);
-        html += ' <span class="label label-primary" style="margin-left:8px;">Venda e taxas: ' + formataDataBr(lancamento.data) + ' (' + lancamento.detalhe + ')</span>';
+        html += ' <span class="label label-primary" style="margin-left:8px;">Liquidação e taxas: ' + formataDataBr(lancamento.data) + ' (' + lancamento.detalhe + ')</span>';
 
         $preview.find('.taxa-preview-text').html(html);
         $preview.show();
     }
 
     $(document).on('change', '[name="forma_pgto_receita[]"], [name="maquininha_taxa_id_receita[]"], [name="data_vencimento_receita[]"], [name="data_pago_receita[]"]', function() {
-        atualizaPreviewTaxa($(this).closest('.row'));
+        var $linha = $(this).closest('.row');
+        atualizaCamposDataCartao($linha);
+        atualizaObrigatoriedadeCartao($linha);
+        atualizaPreviewTaxa($linha);
+    });
+
+    $('.row.item').each(function() {
+        atualizaCamposDataCartao($(this));
+        atualizaPreviewTaxa($(this));
     });
 
     $(document).on('input', '[name="valor_receita[]"]', function() {
@@ -2625,7 +2675,10 @@ $('.data_mask').datepicker({
 
       $('.data_mask').mask('00/00/0000');
       $('.valor_mask').mask('00000,00', {reverse: true});
-      inicializaSelectMaquininhas($('.contasreceber-vinculadas .item:last'));
+      var $novaConta = $('.contasreceber-vinculadas .item:last');
+      inicializaSelectMaquininhas($novaConta);
+      atualizaCamposDataCartao($novaConta);
+      atualizaPreviewTaxa($novaConta);
 
     //   $('.data_mask').datepicker({
     // autoclose: false,

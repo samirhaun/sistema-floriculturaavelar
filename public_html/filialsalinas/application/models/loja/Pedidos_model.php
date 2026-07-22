@@ -4,6 +4,7 @@ class Pedidos_model extends CI_Model {
 
     public function __construct() {
         parent::__construct();
+        $this->load->model('loja/taxas_cartao_model');
     }
 
     public function salvar_pedido($dados, $id=NULL)
@@ -11,6 +12,7 @@ class Pedidos_model extends CI_Model {
 
 
         if($id){
+            $status_anterior = $this->db->select('status_pedido')->from('pedidos')->where('id', $id)->get()->row();
             $this->db->where('id', $id);
             if($this->db->update('pedidos', $dados))
             {
@@ -19,6 +21,12 @@ class Pedidos_model extends CI_Model {
                 || isset($dados['status_pedido']) && $dados['status_pedido'] == '5'):
                   $this->limpa_saida_estoque_pedido($id);
                 endif;
+
+                if(isset($dados['status_pedido']) && $status_anterior){
+                    $era_cancelado = in_array((int) $status_anterior->status_pedido, array(4, 5));
+                    $esta_cancelado = in_array((int) $dados['status_pedido'], array(4, 5));
+                    if($era_cancelado !== $esta_cancelado) $this->taxas_cartao_model->sincronizar_status_pedido($id);
+                }
 
                 return $id;
             }
@@ -69,7 +77,7 @@ class Pedidos_model extends CI_Model {
         $this->db->select('pedidos.*');
         $this->db->select('clientes.nome as cliente_pedido, clientes.telefone as cliente_telefone');
         $this->db->select('entregadores.descricao as entregador');
-        $this->db->select('CASE WHEN COUNT(contas_receber.id) > 0 AND SUM(CASE WHEN contas_receber.status = 0 THEN 1 ELSE 0 END) > 0 THEN 0 ELSE 1 END as pedido_pago', false);
+        $this->db->select('CASE WHEN COUNT(contas_receber.id) > 0 AND SUM(CASE WHEN contas_receber.status = 0 THEN 1 ELSE 0 END) = 0 THEN 1 ELSE 0 END as pedido_pago', false);
         $this->db->from('pedidos');
         $this->db->join('clientes', 'clientes.id=pedidos.clientes_id','left');
         $this->db->join('entregadores', 'entregadores.id=pedidos.entregadores_id','left');
@@ -592,7 +600,7 @@ class Pedidos_model extends CI_Model {
         // $this->db->where('pedidos.valor_entrada <=', 0);
 
         if($dtreferencia == 'pgto'):
-            $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
+            $this->db->where('COALESCE(contas_receber.data_liquidacao, contas_receber.data_pago) BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         elseif($dtreferencia == 'emissao'): 
             $this->db->where('contas_receber.data_vencimento BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
 
@@ -794,6 +802,58 @@ class Pedidos_model extends CI_Model {
         return $this->db->get()->result();
     }
 
+    function get_fluxo_entradas_vendido_recebido_por_forma($inicio, $fim, $origem, $vendedor, $entregador, $formapgto){
+        $resultado = array();
+
+        $this->db->select('contas_receber.forma_pgto, SUM(contas_receber.valor) as total');
+        $this->db->from('contas_receber');
+        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
+        $this->_excluir_pedidos_cancelados();
+        $this->db->where('pedidos.data_pedido BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
+        $this->_apply_filtros_comuns_entradas($origem, $vendedor, $entregador, $formapgto);
+        $this->db->group_by('contas_receber.forma_pgto');
+        foreach($this->db->get()->result() as $linha){
+            $forma = (int) $linha->forma_pgto;
+            if(!isset($resultado[$forma])) $resultado[$forma] = array('vendido' => 0, 'recebido' => 0);
+            $resultado[$forma]['vendido'] = (float) $linha->total;
+        }
+
+        $this->db->select('contas_receber.forma_pgto, SUM(contas_receber.valor) as total');
+        $this->db->from('contas_receber');
+        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
+        $this->_excluir_pedidos_cancelados();
+        $this->db->where('contas_receber.status', 1);
+        $this->db->where('COALESCE(contas_receber.data_liquidacao, contas_receber.data_pago) BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
+        $this->_apply_filtros_comuns_entradas($origem, $vendedor, $entregador, $formapgto);
+        $this->db->group_by('contas_receber.forma_pgto');
+        foreach($this->db->get()->result() as $linha){
+            $forma = (int) $linha->forma_pgto;
+            if(!isset($resultado[$forma])) $resultado[$forma] = array('vendido' => 0, 'recebido' => 0);
+            $resultado[$forma]['recebido'] = (float) $linha->total;
+        }
+
+        ksort($resultado);
+        $linhas = array();
+        foreach($resultado as $forma => $valores){
+            $linha = new stdClass();
+            $linha->forma_pgto = $forma;
+            $linha->total_vendido = $valores['vendido'];
+            $linha->total_recebido = $valores['recebido'];
+            $linhas[] = $linha;
+        }
+        return $linhas;
+    }
+
+    private function _apply_filtros_comuns_entradas($origem, $vendedor, $entregador, $formapgto){
+        if($origem && $origem != 'all') $this->db->where('pedidos.origem', $origem);
+        if($vendedor && $vendedor != 'all') $this->db->where('pedidos.vendedores_id', $vendedor);
+        if($entregador && $entregador != 'all') $this->db->where('pedidos.entregadores_id', $entregador);
+        if(!empty($formapgto)){
+            if(is_array($formapgto)) $this->db->where_in('contas_receber.forma_pgto', $formapgto);
+            else $this->db->where('contas_receber.forma_pgto', $formapgto);
+        }
+    }
+
     function get_demonstrativo_totais_por_forma_pgto_despesas($inicio, $fim, $plano_conta, $referencia, $formapgto, $situacaopgto){
         $this->db->select('contas_pagar.forma_pgto, contas_pagar.status, SUM(contas_pagar.valor) as total');
         $this->db->from('contas_pagar');
@@ -828,7 +888,7 @@ class Pedidos_model extends CI_Model {
         $this->db->join('categorias', 'categorias.id = produtos.categorias_id');
         $this->_excluir_pedidos_cancelados();
         if($dtreferencia == 'pgto'):
-            $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
+            $this->db->where('COALESCE(contas_receber.data_liquidacao, contas_receber.data_pago) BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         else:
             $this->db->where('contas_receber.data_vencimento BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         endif;
@@ -847,7 +907,7 @@ class Pedidos_model extends CI_Model {
         $this->db->join('categorias', 'categorias.id = produtos.categorias_id');
         $this->_excluir_pedidos_cancelados();
         if($dtreferencia == 'pgto'):
-            $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
+            $this->db->where('COALESCE(contas_receber.data_liquidacao, contas_receber.data_pago) BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         else:
             $this->db->where('contas_receber.data_vencimento BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         endif;
@@ -889,7 +949,7 @@ class Pedidos_model extends CI_Model {
         $this->_excluir_pedidos_cancelados();
 
         if($dtreferencia == 'pgto'):
-            $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
+            $this->db->where('COALESCE(contas_receber.data_liquidacao, contas_receber.data_pago) BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         elseif($dtreferencia == 'emissao'): 
             $this->db->where('contas_receber.data_vencimento BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
         endif;
@@ -958,56 +1018,52 @@ class Pedidos_model extends CI_Model {
         $totais->total_itens = 0;
         $totais->total_pedidos = 0;
 
-        $this->db->select('COUNT(DISTINCT pedidos.id) as total_pedidos, SUM(pedido_produto.quantidade) as total_itens');
-        $this->db->from('contas_receber');
-        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
-        $this->db->join('pedido_produto', 'pedido_produto.pedidos_id = pedidos.id');
+        // Relatorio de vendas usa a data em que o pedido foi realizado. A data
+        // de pagamento pertence ao fluxo de caixa e pode ser D+1 no cartao.
+        $this->db->select('COUNT(pedidos.id) as total_pedidos, SUM(pedidos.valor_total) as total_vendido');
+        $this->db->from('pedidos');
         $this->_excluir_pedidos_cancelados();
-        $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
-        $this->db->where('contas_receber.status', 1);
+        $this->db->where('pedidos.data_pedido BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
         $row = $this->db->get()->row();
         if($row){
             $totais->total_pedidos = $row->total_pedidos;
-            $totais->total_itens = $row->total_itens;
+            $totais->total_vendido = $row->total_vendido;
         }
 
-        $this->db->select('SUM(contas_receber.valor) as total');
-        $this->db->from('contas_receber');
-        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
+        // Soma os itens sem passar por contas_receber, evitando multiplicacao
+        // quando um pedido possui pagamento dividido em duas ou mais formas.
+        $this->db->select('SUM(pedido_produto.quantidade) as total_itens');
+        $this->db->from('pedidos');
+        $this->db->join('pedido_produto', 'pedido_produto.pedidos_id = pedidos.id');
         $this->_excluir_pedidos_cancelados();
-        $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
-        $this->db->where('contas_receber.status', 1);
+        $this->db->where('pedidos.data_pedido BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
         $row2 = $this->db->get()->row();
-        if($row2) $totais->total_vendido = $row2->total;
+        if($row2) $totais->total_itens = $row2->total_itens;
 
         return $totais;
     }
 
     function get_vendas_por_produto($inicio, $fim){
         $this->db->select('produtos.id, produtos.titulo as produto, categorias.nome as categoria, produtos.valor as preco_venda, produtos.valor_custo as preco_custo, SUM(pedido_produto.quantidade) as qtd, SUM(pedido_produto.quantidade * produtos.valor) as total, SUM(pedido_produto.quantidade * COALESCE(produtos.valor_custo, 0)) as total_custo');
-        $this->db->from('contas_receber');
-        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
+        $this->db->from('pedidos');
         $this->db->join('pedido_produto', 'pedido_produto.pedidos_id = pedidos.id');
         $this->db->join('produtos', 'produtos.id = pedido_produto.produtos_id');
         $this->db->join('categorias', 'categorias.id = produtos.categorias_id', 'left');
         $this->_excluir_pedidos_cancelados();
-        $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
-        $this->db->where('contas_receber.status', 1);
+        $this->db->where('pedidos.data_pedido BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
         $this->db->group_by('produtos.id, produtos.titulo, categorias.nome');
         $this->db->order_by('total', 'DESC');
         return $this->db->get()->result();
     }
 
     function get_vendas_detalhe_produto($inicio, $fim){
-        $this->db->select('produtos.titulo as produto, pedidos.id as pedido_id, clientes.nome as cliente, pedido_produto.quantidade, produtos.valor, (pedido_produto.quantidade * produtos.valor) as subtotal, contas_receber.data_pago as data_vencimento');
-        $this->db->from('contas_receber');
-        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
+        $this->db->select('produtos.titulo as produto, pedidos.id as pedido_id, clientes.nome as cliente, pedido_produto.quantidade, produtos.valor, (pedido_produto.quantidade * produtos.valor) as subtotal, pedidos.data_pedido as data_vencimento');
+        $this->db->from('pedidos');
         $this->db->join('clientes', 'clientes.id = pedidos.clientes_id', 'left');
         $this->db->join('pedido_produto', 'pedido_produto.pedidos_id = pedidos.id');
         $this->db->join('produtos', 'produtos.id = pedido_produto.produtos_id');
         $this->_excluir_pedidos_cancelados();
-        $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
-        $this->db->where('contas_receber.status', 1);
+        $this->db->where('pedidos.data_pedido BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
         $this->db->order_by('produtos.titulo, pedidos.id');
         return $this->db->get()->result();
     }
@@ -1018,11 +1074,9 @@ class Pedidos_model extends CI_Model {
         $totais->qtd_pedidos = 0;
 
         $this->db->select('pedidos.id, pedidos.tipo_desconto, pedidos.valor_desconto, pedidos.valor, pedidos.valor_frete');
-        $this->db->from('contas_receber');
-        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
+        $this->db->from('pedidos');
         $this->_excluir_pedidos_cancelados();
-        $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
-        $this->db->where('contas_receber.status', 1);
+        $this->db->where('pedidos.data_pedido BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
         $this->db->where('pedidos.valor_desconto >', 0);
         $this->db->group_by('pedidos.id, pedidos.tipo_desconto, pedidos.valor_desconto, pedidos.valor, pedidos.valor_frete');
         $pedidos = $this->db->get()->result();
@@ -1044,14 +1098,23 @@ class Pedidos_model extends CI_Model {
     }
 
     function get_vendas_por_vendedor($inicio, $fim){
-        $this->db->select('COALESCE(vendedores.descricao, "Sem vendedor") as vendedor, COUNT(DISTINCT pedidos.id) as total_pedidos, COUNT(contas_receber.id) as total_parcelas, SUM(contas_receber.valor) as total', false);
-        $this->db->from('contas_receber');
-        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
+        $this->db->select('COALESCE(vendedores.descricao, "Sem vendedor") as vendedor, COUNT(pedidos.id) as total_pedidos, SUM(pedidos.valor_total) as total', false);
+        $this->db->from('pedidos');
         $this->db->join('vendedores', 'vendedores.id = pedidos.vendedores_id', 'left');
         $this->_excluir_pedidos_cancelados();
-        $this->db->where('contas_receber.data_pago BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:00'), '', false);
-        $this->db->where('contas_receber.status', 1);
+        $this->db->where('pedidos.data_pedido BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
         $this->db->group_by('pedidos.vendedores_id, vendedores.descricao');
+        $this->db->order_by('total', 'DESC');
+        return $this->db->get()->result();
+    }
+
+    function get_vendas_por_forma_pgto($inicio, $fim){
+        $this->db->select('contas_receber.forma_pgto, COUNT(contas_receber.id) as total_parcelas, COUNT(DISTINCT pedidos.id) as total_pedidos, SUM(contas_receber.valor) as total');
+        $this->db->from('contas_receber');
+        $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
+        $this->_excluir_pedidos_cancelados();
+        $this->db->where('pedidos.data_pedido BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
+        $this->db->group_by('contas_receber.forma_pgto');
         $this->db->order_by('total', 'DESC');
         return $this->db->get()->result();
     }

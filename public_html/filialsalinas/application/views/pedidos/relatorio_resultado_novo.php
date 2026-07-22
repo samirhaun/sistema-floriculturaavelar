@@ -202,33 +202,41 @@
 
                             <!-- FORMA PGTO -->
                             <div class="row">
-                                <div class="col-md-6">
+                                <div class="col-md-12">
                                     <div class="breakdown-box">
-                                        <h5><i class="fa fa-arrow-up text-info"></i> Receitas por forma de pagamento</h5>
+                                        <h5><i class="fa fa-arrow-up text-info"></i> Entradas por forma de pagamento</h5>
+                                        <p class="text-muted" style="margin-top:-5px;">Total vendido considera a data da venda. Total recebido considera a data em que o valor entrou.</p>
                                         <table class="table table-condensed">
-                                            <thead><tr><th>Forma</th><th class="text-right">Pago</th><th class="text-right">Aberto</th><th class="text-right">Total</th></tr></thead>
+                                            <thead><tr><th>Forma de pagamento</th><th class="text-right">Vendas realizadas<br><small class="text-muted">pela data da venda</small></th><th class="text-right">Valores recebidos<br><small class="text-muted">pela data do recebimento</small></th></tr></thead>
                                             <tbody>
-                                                <?php foreach($resumo_receitas as $fp => $v):
+                                                <?php
+                                                $total_entradas_vendido = 0;
+                                                $total_entradas_recebido = 0;
+                                                if(!empty($comparativo_entradas)):
+                                                foreach($comparativo_entradas as $entrada):
+                                                    $fp = (int) $entrada->forma_pgto;
                                                     $nome_fp = isset($nomes_forma_pgto[$fp]) ? $nomes_forma_pgto[$fp] : 'Outros';
+                                                    $total_entradas_vendido += $entrada->total_vendido;
+                                                    $total_entradas_recebido += $entrada->total_recebido;
                                                 ?>
                                                 <tr>
                                                     <td><?php echo $nome_fp; ?></td>
-                                                    <td class="text-right">R$ <?php echo number_format($v['pago'], 2, ',', '.'); ?></td>
-                                                    <td class="text-right">R$ <?php echo number_format($v['aberto'], 2, ',', '.'); ?></td>
-                                                    <td class="text-right"><strong>R$ <?php echo number_format($v['pago'] + $v['aberto'], 2, ',', '.'); ?></strong></td>
+                                                    <td class="text-right">R$ <?php echo number_format($entrada->total_vendido, 2, ',', '.'); ?></td>
+                                                    <td class="text-right"><strong>R$ <?php echo number_format($entrada->total_recebido, 2, ',', '.'); ?></strong></td>
                                                 </tr>
-                                                <?php endforeach; ?>
-                                                <?php if(empty($resumo_receitas)): ?>
-                                                <tr><td colspan="4" class="text-center text-muted">Nenhum registro</td></tr>
+                                                <?php endforeach; else: ?>
+                                                <tr><td colspan="3" class="text-center text-muted">Nenhum registro</td></tr>
                                                 <?php endif; ?>
                                             </tbody>
-                                            <?php if(!empty($resumo_receitas)): ?>
-                                            <tfoot><tr style="font-weight:700; border-top:2px solid #ddd;"><td>TOTAL</td><td class="text-right">R$ <?php echo number_format($total_r_pago, 2, ',', '.'); ?></td><td class="text-right">R$ <?php echo number_format($total_r_aberto, 2, ',', '.'); ?></td><td class="text-right">R$ <?php echo number_format($total_r_pago + $total_r_aberto, 2, ',', '.'); ?></td></tr></tfoot>
+                                            <?php if(!empty($comparativo_entradas)): ?>
+                                            <tfoot><tr style="font-weight:700; border-top:2px solid #ddd;"><td>TOTAL</td><td class="text-right">R$ <?php echo number_format($total_entradas_vendido, 2, ',', '.'); ?></td><td class="text-right">R$ <?php echo number_format($total_entradas_recebido, 2, ',', '.'); ?></td></tr></tfoot>
                                             <?php endif; ?>
                                         </table>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
                                     <div class="breakdown-box">
                                         <h5><i class="fa fa-arrow-down text-danger"></i> Despesas por forma de pagamento</h5>
                                         <table class="table table-condensed">

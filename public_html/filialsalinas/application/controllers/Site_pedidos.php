@@ -317,6 +317,29 @@ function novo_orcamento(){
   $this->montaTela('pedidos/formulario-orcamento', $data);
 }
 
+private function possui_produto_valido($produtos, $quantidades)
+{
+  if(!is_array($produtos) || !is_array($quantidades)) return false;
+  foreach($produtos as $key => $produto_id){
+    if((int) $produto_id > 0 && isset($quantidades[$key]) && (float) str_replace(',', '.', $quantidades[$key]) > 0){
+      return true;
+    }
+  }
+  return false;
+}
+
+private function possui_receita_valida($valores, $formas_pgto)
+{
+  if(!is_array($valores) || !is_array($formas_pgto)) return false;
+  foreach($valores as $key => $valor){
+    $valor_normalizado = str_replace(',', '.', str_replace('.', '', $valor));
+    if((float) $valor_normalizado > 0 && isset($formas_pgto[$key]) && (int) $formas_pgto[$key] > 0){
+      return true;
+    }
+  }
+  return false;
+}
+
 function salvar_pedido(){
 
 
@@ -328,6 +351,25 @@ function salvar_pedido(){
   // $this->verifica_permissoes();
   if($this->input->post()){
 
+    $produtos_post = $this->input->post('produto_collapse');
+    $quantidades_post = $this->input->post('quantidade_collapse');
+    $receitas_post = $this->input->post('valor_receita');
+    $formas_pgto_post = $this->input->post('forma_pgto_receita');
+    $tem_produto = $this->possui_produto_valido($produtos_post, $quantidades_post);
+    $tem_receita = $this->possui_receita_valida($receitas_post, $formas_pgto_post);
+
+    if(!$tem_produto || !$tem_receita){
+      $pedido_id_log = (int) $this->input->post('id');
+      log_message('error', 'Salvamento de pedido bloqueado: produto ou conta a receber ausente. Pedido: '.$pedido_id_log.'; produto: '.($tem_produto ? 'sim' : 'nao').'; receita: '.($tem_receita ? 'sim' : 'nao'));
+      $mensagem = urlencode('O pedido nao foi salvo: informe ao menos um produto e uma conta a receber valida. Nenhum dado existente foi removido.');
+      if($pedido_id_log){
+        redirect('site/editar-pedido?id='.$pedido_id_log.'&type=error&title=Dados+incompletos&message='.$mensagem);
+      }else{
+        redirect('site/novo-pedido?type=error&title=Dados+incompletos&message='.$mensagem);
+      }
+      return;
+    }
+
 
     // VALIDACAO DESCONTO MAXIMO (% E R$)
     $desconto_valor = (float) str_replace(',', '.', $this->input->post('valor_desconto'));
@@ -335,6 +377,17 @@ function salvar_pedido(){
     $valor_base = (float) str_replace(',', '.', $this->input->post('valor'));
     $valor_frete_val = (float) str_replace(',', '.', $this->input->post('valor_frete'));
     $base_desconto = $valor_base + $valor_frete_val;
+    $pedido_atual_desconto = null;
+    $pedido_id = (int) $this->input->post('id');
+    if($pedido_id){
+      $pedido_atual_desconto = $this->pedidos_model->get_pedido($pedido_id);
+    }
+
+    // Um desconto preexistente pode ser mantido por quem estiver apenas editando
+    // o pedido. Qualquer mudanca de tipo ou valor continua sujeita ao limite.
+    $desconto_inalterado = $pedido_atual_desconto
+      && $pedido_atual_desconto->tipo_desconto === $tipo_desconto
+      && abs((float) $pedido_atual_desconto->valor_desconto - $desconto_valor) < 0.00001;
 
     if($tipo_desconto == 'porcentagem'){
       $pct_aplicado = $desconto_valor;
@@ -348,9 +401,9 @@ function salvar_pedido(){
     $desconto_maximo = (float) $usuario_logado->desconto_maximo;
     $desconto_maximo_valor = isset($usuario_logado->desconto_maximo_valor) ? (float) $usuario_logado->desconto_maximo_valor : 0;
     $excedeu_pct = $desconto_maximo > 0 && $pct_aplicado > $desconto_maximo;
-    $excedeu_valor = $desconto_maximo_valor > 0 && $desconto_em_reais > $desconto_maximo_valor;
+    $excedeu_valor = $tipo_desconto == 'dinheiro' && $desconto_maximo_valor > 0 && $desconto_em_reais > $desconto_maximo_valor;
 
-    if($excedeu_pct || $excedeu_valor){
+    if(($excedeu_pct || $excedeu_valor) && !$desconto_inalterado){
       $autorizado = (isset($_SESSION['auth_desconto_autorizado']) && $_SESSION['auth_desconto_autorizado'] === true);
       if(!$autorizado){
         $motivos = array();
@@ -387,6 +440,14 @@ function salvar_pedido(){
       $id_cliente = $this->input->post('clientes_id');
 
     endif;
+
+    $vendedores_id = $this->input->post('vendedores_id');
+    if($this->input->post('id')){
+      $pedido_atual = $this->pedidos_model->get_pedido($this->input->post('id'));
+      if($pedido_atual && isset($pedido_atual->vendedores_id)){
+        $vendedores_id = $pedido_atual->vendedores_id;
+      }
+    }
 
 
     if(!empty($this->input->post('data_pago'))):
@@ -433,7 +494,7 @@ function salvar_pedido(){
       'complemento_entrega' => $this->input->post('complemento_entrega'),
       'obs' => $this->input->post('obs'),
       'eventos_id' => $this->input->post('eventos_id'),
-      'vendedores_id' => $this->input->post('vendedores_id'),
+      'vendedores_id' => $vendedores_id,
       'cupom_aplicado' => $this->input->post('cupom_aplicado'),
       'pedido_pago' => $pedido_pago,
       'data_pago' => $data_pago,
@@ -449,6 +510,8 @@ function salvar_pedido(){
     
 
 
+ $id_pedido_precriado = null;
+
             //editar pedido
  if($this->input->post('id')){
   $id = $this->input->post('id');
@@ -463,12 +526,26 @@ function salvar_pedido(){
 
   $dados['data_pedido'] = date('Y-m-d H:i:s');
 
+  $resultado_novo = $this->pedidos_model->salvar_pedido_sem_duplicar($dados);
+  if(!empty($resultado_novo['duplicado'])){
+    log_message('error', 'Pedido duplicado bloqueado para cliente #'.(int) $id_cliente.' e valor '.$dados['valor_total']);
+    redirect('loja/pedidos?type=warning&title=Pedido+duplicado&message=Um+pedido+identico+foi+cadastrado+ha+poucos+instantes.+O+envio+duplicado+foi+bloqueado.');
+    return;
+  }
+  if(!empty($resultado_novo['erro']) || empty($resultado_novo['id'])){
+    log_message('error', 'Falha ao obter bloqueio ou salvar novo pedido para cliente #'.(int) $id_cliente);
+    redirect('site/novo-pedido?type=error&title=Pedido+nao+salvo&message=Nao+foi+possivel+salvar+o+pedido.+Tente+novamente.');
+    return;
+  }
+  $id_pedido_precriado = (int) $resultado_novo['id'];
+
 }
 
 
 
 
-if($id_pedido = $this->pedidos_model->salvar_pedido($dados, $id))
+$id_pedido = $id_pedido_precriado ?: $this->pedidos_model->salvar_pedido($dados, $id);
+if($id_pedido)
 {
 
   if(empty($id_return)):
@@ -479,7 +556,8 @@ if($id_pedido = $this->pedidos_model->salvar_pedido($dados, $id))
   /* SLAVANDO OS PRODUTOS DO PEDIDO */
 
 
-  $produtos_count = $this->input->post('produto_collapse');
+  $produtos_count = $produtos_post;
+  $produtos = array();
     
     if(count($produtos_count) > 0){
 
@@ -502,16 +580,26 @@ if($id_pedido = $this->pedidos_model->salvar_pedido($dados, $id))
   }
 
 
-  $this->pedidos_model->salvar_produtos_pedidos($produtos, $id);
+  $this->pedidos_model->salvar_produtos_pedidos($produtos, $id_pedido);
 
 
 
   /* SALAVANDO AS CONTAS A RECEBER DO PEDIDO */
 
 
-  $contas_receber_count = $this->input->post('valor_receita');
+  $contas_receber_count = $receitas_post;
+  $receitas = array();
   $data_base_cartao = ($this->input->post('data_solicitacao')) ? inverteData($this->input->post('data_solicitacao'), '/') : date('Y-m-d');
-  $data_recebimento_cartao = $this->proximo_dia_util($data_base_cartao);
+  // A tela de edicao recria as contas; preserva a liquidacao ja calculada
+  // quando a pessoa nao mudou a data paga daquela conta.
+  $contas_atuais = array();
+  $ids_contas_post = array_filter((array) $this->input->post('contas_receber_id'));
+  if (!empty($ids_contas_post)) {
+    $linhas_atuais = $this->db->select('id, data_pago, data_liquidacao')
+      ->from('contas_receber')->where('pedidos_id', $id_pedido)
+      ->where_in('id', $ids_contas_post)->get()->result();
+    foreach ($linhas_atuais as $linha_atual) $contas_atuais[$linha_atual->id] = $linha_atual;
+  }
     
     if(count($contas_receber_count) > 0){
 
@@ -527,9 +615,23 @@ if($id_pedido = $this->pedidos_model->salvar_pedido($dados, $id))
         $dados_receita['data_vencimento'] = inverteData($this->input->post('data_vencimento_receita')[$key],'/');
         $dados_receita['valor'] = str_replace(',', '.', $this->input->post('valor_receita')[$key]) ;
         $forma_pgto_receita = ($this->input->post('forma_pgto_receita')[$key]) ? $this->input->post('forma_pgto_receita')[$key] : null;
-        $eh_credito = in_array((int) $forma_pgto_receita, array(3, 4, 5, 6));
-        $dados_receita['status'] = $eh_credito ? 1 : $this->input->post('status_receita')[$key];
-        $dados_receita['data_pago'] = $eh_credito ? $data_recebimento_cartao : (($this->input->post('data_pago_receita')[$key]) ? inverteData($this->input->post('data_pago_receita')[$key],'/') : null);
+        $eh_cartao_d1 = in_array((int) $forma_pgto_receita, array(2, 3, 4, 5, 6));
+        $data_pago_informada = (!empty($this->input->post('data_pago_receita')[$key])) ? inverteData($this->input->post('data_pago_receita')[$key],'/') : null;
+        $id_conta_original = isset($this->input->post('contas_receber_id')[$key]) ? (int) $this->input->post('contas_receber_id')[$key] : 0;
+        $conta_original = isset($contas_atuais[$id_conta_original]) ? $contas_atuais[$id_conta_original] : null;
+        $dados_receita['status'] = $eh_cartao_d1 ? 1 : $this->input->post('status_receita')[$key];
+        // data_pago e a data da transacao informada em cada conta. Para
+        // cartao, a data_liquidacao (uso interno) representa o D+1 util.
+        $dados_receita['data_pago'] = $eh_cartao_d1 ? ($data_pago_informada ?: $data_base_cartao) : $data_pago_informada;
+        $dados_receita['data_liquidacao'] = ($eh_cartao_d1 && !empty($dados_receita['data_pago'])) ? $this->proximo_dia_util($dados_receita['data_pago']) : null;
+        if ($eh_cartao_d1 && $conta_original && $data_pago_informada === $conta_original->data_pago && !empty($conta_original->data_liquidacao)) {
+          $dados_receita['data_liquidacao'] = $conta_original->data_liquidacao;
+        }
+        unset($dados_receita['data_pago_taxa']);
+        // A taxa e abatida na mesma liquidacao da receita de cartao.
+        if($eh_cartao_d1 && !empty($dados_receita['data_liquidacao'])){
+          $dados_receita['data_pago_taxa'] = $dados_receita['data_liquidacao'];
+        }
         //ESSE PLANO MANUAL
         $dados_receita['plano_contas_id'] = 33;
         $dados_receita['pedidos_id'] = $id_pedido;
@@ -621,11 +723,14 @@ function salvar_pedido_orcamento(){
 
   $this->verifica_permissoes();
   if($this->input->post()){
+    $valor_total = (float) str_replace(',', '.', $this->input->post('valor'));
     $dados = array(
+      'origem' => 1,
       'clientes_id' => $this->input->post('cliente'),
       'data_solicitacao' => $this->input->post('data_solicitacao'),
       'data_entrega' => $this->input->post('data_entrega'),
-      'valor' => str_replace(',', '.', $this->input->post('valor')),
+      'valor' => $valor_total,
+      'valor_total' => $valor_total,
       'observacao' => $this->input->post('observacao'),
       'prazos_pagamento' => $this->input->post('prazos_pagamento'),
       'forma_pagamento' => $this->input->post('forma_pagamento'),
@@ -687,15 +792,30 @@ function salvar_pedido_orcamento(){
             //editar pedido
  if($this->input->post('id')){
   $id = $this->input->post('id');
+
+  $id_pedido = $this->pedidos_model->salvar_pedido($dados, $id);
 }else{
  $dados['usuarios_id'] = $this->auth->get_id_usuario();
  $dados['nome_usuario'] = $this->auth->get_nome_usuario();
+
+ $resultado_novo = $this->pedidos_model->salvar_pedido_sem_duplicar($dados);
+ if(!empty($resultado_novo['duplicado'])){
+   log_message('error', 'Pedido duplicado bloqueado (orcamento) para cliente #'.(int) $dados['clientes_id'].' e valor '.$dados['valor_total']);
+   redirect('loja/pedidos?type=warning&title=Pedido+duplicado&message=Um+pedido+identico+foi+cadastrado+ha+poucos+instantes.+O+envio+duplicado+foi+bloqueado.');
+   return;
+ }
+ if(!empty($resultado_novo['erro']) || empty($resultado_novo['id'])){
+   log_message('error', 'Falha ao obter bloqueio ou salvar novo pedido (orcamento) para cliente #'.(int) $dados['clientes_id']);
+   redirect('site/novo-orcamento?type=error&title=Pedido+nao+salvo&message=Nao+foi+possivel+salvar+o+pedido.+Tente+novamente.');
+   return;
+ }
+ $id_pedido = (int) $resultado_novo['id'];
 }
 
 
 
 
-if($id_pedido = $this->pedidos_model->salvar_pedido($dados, $id))
+if($id_pedido)
 {
 
   $this->pedidos_model->salvar_produtos_pedidos($produtos, $id_pedido);
@@ -974,6 +1094,11 @@ function enderecos_cliente_setar()
 //SOLICITAR CODIGO DE AUTORIZACAO DE DESCONTO
 function solicitar_codigo_desconto()
 {
+    if (!$this->input->is_ajax_request() || strtoupper($this->input->method()) !== 'POST') {
+        echo json_encode(['success' => false, 'message' => 'Solicitacao invalida.']);
+        return;
+    }
+
     $code = strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 6));
     $expiresAt = time() + 900; // 15 minutos
 

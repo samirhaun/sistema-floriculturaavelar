@@ -4,6 +4,7 @@ class Pedidos_model extends CI_Model {
 
     public function __construct() {
         parent::__construct();
+        $this->load->model('loja/taxas_cartao_model');
     }
 
 
@@ -12,7 +13,7 @@ class Pedidos_model extends CI_Model {
         $this->db->select('pedidos.*');
         $this->db->select('clientes.nome as cliente_pedido, clientes.telefone as cliente_telefone');
         $this->db->select('entregadores.descricao as entregador');
-        $this->db->select('CASE WHEN COUNT(contas_receber.id) > 0 AND SUM(CASE WHEN contas_receber.status = 0 THEN 1 ELSE 0 END) > 0 THEN 0 ELSE 1 END as pedido_pago', false);
+        $this->db->select('CASE WHEN COUNT(contas_receber.id) > 0 AND SUM(CASE WHEN contas_receber.status = 0 THEN 1 ELSE 0 END) = 0 THEN 1 ELSE 0 END as pedido_pago', false);
         $this->db->from('pedidos');
         $this->db->join('clientes', 'clientes.id=pedidos.clientes_id','left');
         $this->db->join('entregadores', 'entregadores.id=pedidos.entregadores_id','left');
@@ -52,6 +53,31 @@ class Pedidos_model extends CI_Model {
             {
                 return false;
             }
+        }
+    }
+
+    public function check_pedido_duplicado($clientes_id, $valor_total, $minutos = 5)
+    {
+        $this->db->where('clientes_id', $clientes_id)->where('valor_total', $valor_total);
+        $this->db->where('data_pedido >=', date('Y-m-d H:i:s', strtotime('-'.(int) $minutos.' minutes')));
+        $this->db->where('origem', 1)->where_in('status_pedido', array(0, 1, 5));
+        return $this->db->get('pedidos')->num_rows() > 0;
+    }
+
+    public function salvar_pedido_sem_duplicar($dados, $minutos = 5)
+    {
+        $cliente_id = isset($dados['clientes_id']) ? (int) $dados['clientes_id'] : 0;
+        $valor_total = isset($dados['valor_total']) ? number_format((float) $dados['valor_total'], 2, '.', '') : '0.00';
+        $nome_lock = 'pedido_'.sha1($cliente_id.'|'.$valor_total);
+        $lock = $this->db->query('SELECT GET_LOCK(?, 10) AS adquirido', array($nome_lock))->row();
+        if (!$lock || (int) $lock->adquirido !== 1) return array('id' => null, 'duplicado' => false, 'erro' => true);
+
+        try {
+            if ($this->check_pedido_duplicado($cliente_id, $valor_total, $minutos)) return array('id' => null, 'duplicado' => true, 'erro' => false);
+            if (!$this->db->insert('pedidos', $dados)) return array('id' => null, 'duplicado' => false, 'erro' => true);
+            return array('id' => $this->db->insert_id(), 'duplicado' => false, 'erro' => false);
+        } finally {
+            $this->db->query('SELECT RELEASE_LOCK(?)', array($nome_lock));
         }
     }
 
@@ -161,12 +187,12 @@ class Pedidos_model extends CI_Model {
     }
 
     function excluir_pedido($id){
+        $this->db->trans_start();
+        $this->taxas_cartao_model->excluir_financeiro_pedido($id);
         $this->db->where('id', $id);
-        if($this->db->delete('pedidos')){
-            return TRUE;
-        }else{
-            return FALSE;
-        }
+        $this->db->delete('pedidos');
+        $this->db->trans_complete();
+        return $this->db->trans_status();
     }
 
     function excluir_itens_pedido($id){
@@ -188,11 +214,14 @@ class Pedidos_model extends CI_Model {
     }
 
     public function salvar_contas_receber($dados, $pedido_id = null){
-        if(!$pedido_id){
+        if(!$pedido_id || empty($dados) || !is_array($dados)){
+            log_message('error', 'Contas a receber preservadas: tentativa de salvar lista vazia para pedido #'.(int) $pedido_id);
             return false;
         }
 
         $this->db->trans_start();
+
+        $lotes_antecipacao = $this->taxas_cartao_model->lotes_do_pedido($pedido_id);
 
         $contas_atuais = $this->db->select('id')
             ->from('contas_receber')
@@ -215,7 +244,13 @@ $this->db->where_in('contas_receber_id', $ids_contas);
 
         if(!empty($dados)){
             foreach($dados as $receita){
-                $this->db->insert('contas_receber', $receita);
+                $receita = $this->preencher_bandeira_cartao($receita);
+                // data_pago_taxa e' um dado temporario usado somente para
+                // calcular a conta da taxa. Nao e' uma coluna de
+                // contas_receber e, portanto, nao pode ir para o INSERT.
+                $receita_para_salvar = $receita;
+                unset($receita_para_salvar['data_pago_taxa']);
+                $this->db->insert('contas_receber', $receita_para_salvar);
                 $conta_receber_id = $this->db->insert_id();
 $taxa_conta_id = $this->criar_conta_taxa_maquininha($receita, $conta_receber_id, $pedido_id);
 
@@ -224,12 +259,43 @@ $taxa_conta_id = $this->criar_conta_taxa_maquininha($receita, $conta_receber_id,
                     $this->db->update('contas_receber', array('taxa_contas_pagar_id' => $taxa_conta_id));
                 }
 
-                $this->criar_conta_taxa_antecipacao($receita, $conta_receber_id, $pedido_id);
+                $lote = $this->taxas_cartao_model->lote_da_receita($receita);
+                if($lote){
+                    $lotes_antecipacao[] = $lote;
+                }
             }
         }
 
+        $this->taxas_cartao_model->recalcular_lotes($lotes_antecipacao);
+        $liquidacoes_cartao = array();
+        foreach ($dados as $receita) {
+            if (in_array((int) $receita['forma_pgto'], array(3, 4, 5, 6)) && !empty($receita['data_liquidacao'])) {
+                $liquidacoes_cartao[] = $receita['data_liquidacao'];
+            }
+        }
+        $this->taxas_cartao_model->recalcular_lotes_por_liquidacao($liquidacoes_cartao);
+
         $this->db->trans_complete();
         return $this->db->trans_status();
+    }
+
+    private function preencher_bandeira_cartao($receita)
+    {
+        if(!empty($receita['bandeira_cartao'])){
+            $receita['bandeira_cartao'] = $this->taxas_cartao_model->normalizar_bandeira($receita['bandeira_cartao']);
+            return $receita;
+        }
+        if(empty($receita['maquininha_taxa_id'])){
+            $receita['bandeira_cartao'] = null;
+            return $receita;
+        }
+        $grupo = $this->db->select('grupo_bandeira, bandeiras')->from('maquininhas_cartao_taxas')->where('id', $receita['maquininha_taxa_id'])->get()->row();
+        $bandeira = $grupo ? trim((string) $grupo->bandeiras) : '';
+        $opcoes = preg_split('/[,;\/]+/', $bandeira, -1, PREG_SPLIT_NO_EMPTY);
+        if(count($opcoes) === 1) $bandeira = trim($opcoes[0]);
+        elseif($grupo) $bandeira = trim((string) $grupo->grupo_bandeira);
+        $receita['bandeira_cartao'] = $bandeira ? $this->taxas_cartao_model->normalizar_bandeira($bandeira) : null;
+        return $receita;
     }
 
     private function criar_conta_taxa_maquininha($receita, $conta_receber_id, $pedido_id)
@@ -273,7 +339,7 @@ $taxa_conta_id = $this->criar_conta_taxa_maquininha($receita, $conta_receber_id,
             return null;
         }
 
-        $data_vencimento = !empty($receita['data_pago']) ? $receita['data_pago'] : $receita['data_vencimento'];
+        $data_vencimento = !empty($receita['data_pago_taxa']) ? $receita['data_pago_taxa'] : (!empty($receita['data_pago']) ? $receita['data_pago'] : $receita['data_vencimento']);
 
         $conta_pagar = array(
             'descricao' => 'Taxa maquininha '.$maquininha->nome.($taxa_bandeira ? ' - '.$taxa_bandeira->grupo_bandeira : '').' - pedido #'.$pedido_id,
@@ -283,8 +349,14 @@ $taxa_conta_id = $this->criar_conta_taxa_maquininha($receita, $conta_receber_id,
             'data_pago' => ((int) $receita['status'] === 1) ? $data_vencimento : null,
             'plano_contas_id' => $maquininha->plano_contas_taxa_id,
             'fornecedores_id' => $maquininha->fornecedor_id,
-            'forma_pgto' => null,
+            // A taxa e abatida no mesmo recebimento do cartao. Mantem a
+            // forma da venda para que o fluxo de caixa a considere.
+            'forma_pgto' => (int) $receita['forma_pgto'],
             'contas_receber_id' => $conta_receber_id,
+            'maquininha_cartao_id' => $maquininha->id,
+            'bandeira_cartao' => !empty($receita['bandeira_cartao']) ? $this->taxas_cartao_model->normalizar_bandeira($receita['bandeira_cartao']) : null,
+            'base_calculo' => $valor_receita,
+            'percentual_taxa' => $percentual,
             'origem' => 'taxa_maquininha',
         );
 
@@ -310,65 +382,6 @@ private function campo_taxa_maquininha($forma_pgto)
         }
     }
 
-    private function criar_conta_taxa_antecipacao($receita, $conta_receber_id, $pedido_id)
-    {
-        if((empty($receita['maquininha_cartao_id']) && empty($receita['maquininha_taxa_id'])) || !in_array((int) $receita['forma_pgto'], array(3, 4, 5, 6))){
-            return null;
-        }
-
-        $taxa_bandeira = null;
-        if(!empty($receita['maquininha_taxa_id'])){
-            $taxa_bandeira = $this->db->select('*')
-                ->from('maquininhas_cartao_taxas')
-                ->where('id', $receita['maquininha_taxa_id'])
-                ->where('ativo', 1)
-                ->where('deleted_at IS NULL', null, false)
-                ->get()->row();
-
-            if($taxa_bandeira){
-                $receita['maquininha_cartao_id'] = $taxa_bandeira->maquininha_cartao_id;
-            }
-        }
-
-        $maquininha = $this->db->select('*')
-            ->from('maquininhas_cartao')
-            ->where('id', $receita['maquininha_cartao_id'])
-            ->where('ativo', 1)
-            ->where('deleted_at IS NULL', null, false)
-            ->get()->row();
-
-        if(!$maquininha){
-            return null;
-        }
-
-        $origem_taxa = $taxa_bandeira ? $taxa_bandeira : $maquininha;
-        $percentual = isset($origem_taxa->taxa_antecipacao) ? (float) $origem_taxa->taxa_antecipacao : 0;
-        $valor_receita = (float) $receita['valor'];
-        $valor_taxa = round(($valor_receita * $percentual) / 100, 2);
-
-        if($valor_taxa <= 0){
-            return null;
-        }
-
-        $data_vencimento = !empty($receita['data_pago']) ? $receita['data_pago'] : $receita['data_vencimento'];
-
-        $conta_pagar = array(
-            'descricao' => 'Taxa antecipacao '.$maquininha->nome.($taxa_bandeira ? ' - '.$taxa_bandeira->grupo_bandeira : '').' - pedido #'.$pedido_id,
-            'data_vencimento' => $data_vencimento,
-            'valor' => $valor_taxa,
-            'status' => ((int) $receita['status'] === 1) ? 1 : 0,
-            'data_pago' => ((int) $receita['status'] === 1) ? $data_vencimento : null,
-            'plano_contas_id' => $maquininha->plano_contas_taxa_id,
-            'fornecedores_id' => $maquininha->fornecedor_id,
-            'forma_pgto' => null,
-            'contas_receber_id' => $conta_receber_id,
-            'origem' => 'taxa_antecipacao',
-        );
-
-        $this->db->insert('contas_pagar', $conta_pagar);
-        return $this->db->insert_id();
-    }
-
     public function get_contas_receber_pedidos($pedido_id)
     {
 
@@ -381,6 +394,11 @@ private function campo_taxa_maquininha($forma_pgto)
 
 
     public function salvar_produtos_pedidos($dados, $pedido_id = null){
+
+        if(empty($dados) || !is_array($dados)){
+            log_message('error', 'Produtos do pedido preservados: tentativa de salvar lista vazia para pedido #'.(int) $pedido_id);
+            return false;
+        }
 
         // echo '<pre>';
         // print_r($dados);

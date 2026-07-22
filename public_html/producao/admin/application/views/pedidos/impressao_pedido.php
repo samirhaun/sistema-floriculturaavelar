@@ -191,9 +191,10 @@
                                 </thead>
                                 <tbody>
 
-                                        <?php 
-                                        $total_produtos = 0; 
-                                        foreach ($produtos as $key => $produto): 
+                                        <?php
+                                        $total_produtos = 0;
+                                        if(is_array($produtos) && !empty($produtos)):
+                                        foreach ($produtos as $key => $produto):
                                          ?>
                                         <tr>
                                             <td style="width: 70%;">
@@ -204,13 +205,14 @@
                                             </td>
                                             <td><?php echo $produto->id ?></td>
                                             <td><?php echo $produto->quantidade ?></td>
-                                          
+
                                             <td>R$ <?php echo number_format($produto->valor, 2, ',', '.'); ?></td>
                                             <td>R$ <?php echo number_format($produto->valor*$produto->quantidade, 2, ',', '.'); ?></td>
                                         </tr>
-                                    <?php 
+                                    <?php
                                     $total_produtos = $total_produtos + $produto->valor * $produto->quantidade;
-                                    endforeach; 
+                                    endforeach;
+                                    endif;
                                     ?>
                                 </tbody>
                             </table>
