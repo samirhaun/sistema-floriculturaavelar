@@ -60,10 +60,6 @@
                         $vendedor_sel = $v;
                         break;
                       }
-                      if (!isset($pedido) && strcasecmp(trim($v->descricao), trim($usuario->nome)) === 0) {
-                        $vendedor_sel = $v;
-                        break;
-                      }
                     }
                   ?>
                   <select required="" class="form-control" name="vendedores_id" id="vendedores_id_select">
