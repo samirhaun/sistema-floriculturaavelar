@@ -231,22 +231,39 @@ class Loja_demonstrativo extends TEC_Controller {
                 }
             }
 
+            // Duplicata (forma_pgto = 7) e' venda a prazo: fica isolada dos totais de caixa,
+            // mas registrada a parte para nao sumir do relatorio.
             $total_receitas_aberto = 0; $total_receitas_pago = 0;
+            $card_duplicata_recebido = 0; $card_duplicata_aberto = 0;
             foreach($pedidos_all as $p){
                 if(!empty($p->cancelada_relatorio)){
                     continue;
                 }
-                if($p->status_receita == 1) $total_receitas_pago += (float) $p->valor_receita;
-                else $total_receitas_aberto += (float) $p->valor_receita;
+                $eh_duplicata = ((int) $p->forma_pgto_receita === 7);
+                if($p->status_receita == 1){
+                    if($eh_duplicata) $card_duplicata_recebido += (float) $p->valor_receita;
+                    else $total_receitas_pago += (float) $p->valor_receita;
+                } else {
+                    if($eh_duplicata) $card_duplicata_aberto += (float) $p->valor_receita;
+                    else $total_receitas_aberto += (float) $p->valor_receita;
+                }
             }
             $card_total_a_receber = 0;
+            $card_duplicata_a_receber = 0;
             if(!empty($data['card_receitas_abertas'])){
                 foreach($data['card_receitas_abertas'] as $r){
-                    $card_total_a_receber += (float) $r->valor_receita;
+                    if((int) $r->forma_pgto_receita === 7){
+                        $card_duplicata_a_receber += (float) $r->valor_receita;
+                    } else {
+                        $card_total_a_receber += (float) $r->valor_receita;
+                    }
                 }
             }
             $data['card_total_a_receber'] = $card_total_a_receber;
             $data['card_total_recebido'] = $total_receitas_pago;
+            $data['card_duplicata_a_receber'] = $card_duplicata_a_receber;
+            $data['card_duplicata_recebido'] = $card_duplicata_recebido;
+            $data['card_duplicata_aberto'] = $card_duplicata_aberto;
 
             $total_desp_aberto = 0; $total_desp_pago = 0;
             foreach($contas_all as $c){

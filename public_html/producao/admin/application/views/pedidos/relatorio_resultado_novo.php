@@ -127,10 +127,18 @@
                             );
 
                             // -- Forma pgto receitas --
+                            // Duplicata (forma_pgto 7) fica fora do resumo por status: e' venda a prazo,
+                            // nao representa dinheiro em caixa.
                             $resumo_receitas = array(); $total_r_pago = 0; $total_r_aberto = 0;
+                            $duplicata_status_pago = 0; $duplicata_status_aberto = 0;
                             if(!empty($totais_forma_pgto_receitas)):
                                 foreach($totais_forma_pgto_receitas as $t):
                                     $fp = $t->forma_pgto ?: 0;
+                                    if((int) $fp === 7){
+                                        if($t->status == 1) $duplicata_status_pago += $t->total;
+                                        else $duplicata_status_aberto += $t->total;
+                                        continue;
+                                    }
                                     if(!isset($resumo_receitas[$fp])) $resumo_receitas[$fp] = array('pago' => 0, 'aberto' => 0);
                                     if($t->status == 1) { $resumo_receitas[$fp]['pago'] += $t->total; $total_r_pago += $t->total; }
                                     else { $resumo_receitas[$fp]['aberto'] += $t->total; $total_r_aberto += $t->total; }
@@ -212,9 +220,17 @@
                                                 <?php
                                                 $total_entradas_vendido = 0;
                                                 $total_entradas_recebido = 0;
+                                                $duplicata_vendido = 0;
+                                                $duplicata_recebido = 0;
                                                 if(!empty($comparativo_entradas)):
                                                 foreach($comparativo_entradas as $entrada):
                                                     $fp = (int) $entrada->forma_pgto;
+                                                    if($fp === 7){
+                                                        // Duplicata nao entra no total de caixa: fica isolada na div abaixo.
+                                                        $duplicata_vendido += $entrada->total_vendido;
+                                                        $duplicata_recebido += $entrada->total_recebido;
+                                                        continue;
+                                                    }
                                                     $nome_fp = isset($nomes_forma_pgto[$fp]) ? $nomes_forma_pgto[$fp] : 'Outros';
                                                     $total_entradas_vendido += $entrada->total_vendido;
                                                     $total_entradas_recebido += $entrada->total_recebido;
@@ -235,6 +251,28 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- DUPLICATA (ISOLADA DOS TOTAIS) -->
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="breakdown-box" style="background:#fff8e1; border:1px solid #f0ad4e;">
+                                        <h5><i class="fa fa-file-text-o text-warning"></i> Duplicata <small class="text-muted">(fora dos totais de caixa)</small></h5>
+                                        <p class="text-muted" style="margin-top:-5px;">Venda a prazo: não representa dinheiro em caixa, por isso fica de fora dos cards e das demais tabelas de totais deste relatório.</p>
+                                        <table class="table table-condensed" style="margin-bottom:0;">
+                                            <thead><tr><th></th><th class="text-right">Vendido<br><small class="text-muted">pela data da venda</small></th><th class="text-right">Recebido<br><small class="text-muted">pela data do recebimento</small></th><th class="text-right">Em aberto<br><small class="text-muted">por vencimento</small></th></tr></thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>Duplicata</td>
+                                                    <td class="text-right">R$ <?php echo number_format($duplicata_vendido, 2, ',', '.'); ?></td>
+                                                    <td class="text-right">R$ <?php echo number_format($duplicata_recebido, 2, ',', '.'); ?></td>
+                                                    <td class="text-right">R$ <?php echo number_format($card_duplicata_a_receber, 2, ',', '.'); ?></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="row">
                                 <div class="col-md-12">
                                     <div class="breakdown-box">
