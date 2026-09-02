@@ -818,13 +818,15 @@ class Pedidos_model extends CI_Model {
     function get_fluxo_entradas_vendido_recebido_por_forma($inicio, $fim, $origem, $vendedor, $entregador, $formapgto){
         $resultado = array();
 
-        // Vendas realizadas no periodo, independentemente da data em que o
-        // dinheiro sera recebido (cartao D+1, parcelas, duplicatas etc.).
+        // Venda realizada = conta efetivamente paga, pela competencia definida
+        // no vencimento. Isso preserva a data comercial quando um pedido e
+        // lancado retroativamente por indisponibilidade do sistema.
         $this->db->select('contas_receber.forma_pgto, SUM(contas_receber.valor) as total');
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
         $this->_excluir_pedidos_cancelados();
-        $this->db->where('pedidos.data_pedido BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
+        $this->db->where('contas_receber.status', 1);
+        $this->db->where('contas_receber.data_vencimento BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
         $this->_apply_filtros_comuns_entradas($origem, $vendedor, $entregador, $formapgto);
         $this->db->group_by('contas_receber.forma_pgto');
         foreach($this->db->get()->result() as $linha){

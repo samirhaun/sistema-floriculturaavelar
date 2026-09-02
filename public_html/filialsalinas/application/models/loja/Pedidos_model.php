@@ -809,7 +809,8 @@ class Pedidos_model extends CI_Model {
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
         $this->_excluir_pedidos_cancelados();
-        $this->db->where('pedidos.data_pedido BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
+        $this->db->where('contas_receber.status', 1);
+        $this->db->where('contas_receber.data_vencimento BETWEEN ' . $this->db->escape($inicio.' 00:00:00') . ' AND ' . $this->db->escape($fim.' 23:59:59'), '', false);
         $this->_apply_filtros_comuns_entradas($origem, $vendedor, $entregador, $formapgto);
         $this->db->group_by('contas_receber.forma_pgto');
         foreach($this->db->get()->result() as $linha){

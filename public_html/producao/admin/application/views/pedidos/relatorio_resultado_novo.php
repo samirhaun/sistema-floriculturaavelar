@@ -213,9 +213,9 @@
                                 <div class="col-md-12">
                                     <div class="breakdown-box">
                                         <h5><i class="fa fa-arrow-up text-info"></i> Entradas por forma de pagamento</h5>
-                                        <p class="text-muted" style="margin-top:-5px;">Total vendido considera a data da venda. Total recebido considera a data em que o valor entrou.</p>
+                                        <p class="text-muted" style="margin-top:-5px;">Vendas realizadas consideram somente contas pagas, pela data de vencimento (competência). Valores recebidos consideram a data em que o valor entrou.</p>
                                         <table class="table table-condensed">
-                                            <thead><tr><th>Forma de pagamento</th><th class="text-right">Vendas realizadas<br><small class="text-muted">pela data da venda</small></th><th class="text-right">Valores recebidos<br><small class="text-muted">pela data do recebimento</small></th></tr></thead>
+                                            <thead><tr><th>Forma de pagamento</th><th class="text-right">Vendas realizadas<br><small class="text-muted">pela data de vencimento</small></th><th class="text-right">Valores recebidos<br><small class="text-muted">pela data do recebimento</small></th></tr></thead>
                                             <tbody>
                                                 <?php
                                                 $total_entradas_vendido = 0;
