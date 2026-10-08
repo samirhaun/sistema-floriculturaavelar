@@ -647,8 +647,8 @@
                                             <tr>
                                                 <td><?php echo $c->id; ?></td>
                                                 <td><?php echo $c->fornecedor; ?></td>
-                                                <td><?php echo !empty($c->categoria_despesa) ? htmlspecialchars($c->categoria_despesa, ENT_QUOTES, 'UTF-8') : (!empty($c->plano_conta) ? htmlspecialchars($c->plano_conta, ENT_QUOTES, 'UTF-8') : '-'); ?></td>
-                                                <td><?php echo !empty($c->categoria_despesa) && !empty($c->subcategoria_despesa) ? htmlspecialchars($c->subcategoria_despesa, ENT_QUOTES, 'UTF-8') : '-'; ?></td>
+                                                <td><?php echo !empty($c->categoria_despesa) ? htmlspecialchars(trim((!empty($c->codigo_categoria_despesa) ? $c->codigo_categoria_despesa . ' - ' : '') . $c->categoria_despesa), ENT_QUOTES, 'UTF-8') : (!empty($c->plano_conta) ? htmlspecialchars(trim((!empty($c->cod_plano_conta) ? $c->cod_plano_conta . ' - ' : '') . $c->plano_conta), ENT_QUOTES, 'UTF-8') : '-'); ?></td>
+                                                <td><?php echo !empty($c->categoria_despesa) && !empty($c->subcategoria_despesa) ? htmlspecialchars(trim((!empty($c->codigo_subcategoria_despesa) ? $c->codigo_subcategoria_despesa . ' - ' : '') . $c->subcategoria_despesa), ENT_QUOTES, 'UTF-8') : '-'; ?></td>
                                                 <td><?php echo date("d/m/Y", strtotime($c->data_vencimento)); ?></td>
                                                 <td>R$ <?php echo number_format($c->valor, 2, ',', '.'); ?></td>
                                                 <td><?php echo ($c->status == 0) ? '<span class="badge badge-aberto">Em aberto</span>' : '<span class="badge badge-pago">Paga</span>'; ?></td>

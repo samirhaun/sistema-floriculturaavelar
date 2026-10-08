@@ -607,8 +607,8 @@ class Pedidos_model extends CI_Model {
         $this->db->select('eventos.descricao as evento_pedido');
         // A conta a receber pertence ao pedido, que pode ter produtos de mais de
         // uma classificacao. Agregar aqui evita repetir a parcela na listagem.
-        $this->db->select('(SELECT GROUP_CONCAT(DISTINCT grupos_categorias.nome ORDER BY grupos_categorias.nome SEPARATOR ", ") FROM pedido_produto LEFT JOIN produtos ON produtos.id = pedido_produto.produtos_id LEFT JOIN categorias ON categorias.id = produtos.categorias_id LEFT JOIN grupos_categorias ON grupos_categorias.id = categorias.grupos_categorias_id WHERE pedido_produto.pedidos_id = pedidos.id) as categoria_pedido', false);
-        $this->db->select('(SELECT GROUP_CONCAT(DISTINCT categorias.nome ORDER BY categorias.nome SEPARATOR ", ") FROM pedido_produto LEFT JOIN produtos ON produtos.id = pedido_produto.produtos_id LEFT JOIN categorias ON categorias.id = produtos.categorias_id WHERE pedido_produto.pedidos_id = pedidos.id) as subcategoria_pedido', false);
+        $this->db->select('(SELECT GROUP_CONCAT(DISTINCT CONCAT(grupos_categorias.id, " - ", grupos_categorias.nome) ORDER BY grupos_categorias.nome SEPARATOR ", ") FROM pedido_produto LEFT JOIN produtos ON produtos.id = pedido_produto.produtos_id LEFT JOIN categorias ON categorias.id = produtos.categorias_id LEFT JOIN grupos_categorias ON grupos_categorias.id = categorias.grupos_categorias_id WHERE pedido_produto.pedidos_id = pedidos.id) as categoria_pedido', false);
+        $this->db->select('(SELECT GROUP_CONCAT(DISTINCT CONCAT(categorias.id, " - ", categorias.nome) ORDER BY categorias.nome SEPARATOR ", ") FROM pedido_produto LEFT JOIN produtos ON produtos.id = pedido_produto.produtos_id LEFT JOIN categorias ON categorias.id = produtos.categorias_id WHERE pedido_produto.pedidos_id = pedidos.id) as subcategoria_pedido', false);
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id=contas_receber.pedidos_id','left');
         $this->db->join('clientes', 'clientes.id=pedidos.clientes_id','left');
@@ -662,7 +662,7 @@ class Pedidos_model extends CI_Model {
     function get_demonstrativo_pagar_novo($inicio, $fim, $origem, $vendedor, $plano_conta, $referencia, $formapgto,$situacaopgto){
 
 
-        $this->db->select('contas_pagar.*, fornecedores.nome as fornecedor,plano_contas.descricao as plano_conta, plano_contas.cod as cod_plano_conta, plano_contas_pai.descricao as categoria_despesa, plano_contas.descricao as subcategoria_despesa');
+        $this->db->select('contas_pagar.*, fornecedores.nome as fornecedor,plano_contas.descricao as plano_conta, plano_contas.cod as cod_plano_conta, plano_contas_pai.cod as codigo_categoria_despesa, plano_contas_pai.descricao as categoria_despesa, plano_contas.cod as codigo_subcategoria_despesa, plano_contas.descricao as subcategoria_despesa');
         $this->db->from('contas_pagar');
         $this->db->join('fornecedores','fornecedores.id = contas_pagar.fornecedores_id');
         $this->db->join('plano_contas','plano_contas.id = contas_pagar.plano_contas_id');
@@ -784,8 +784,8 @@ class Pedidos_model extends CI_Model {
         $this->db->select('clientes.nome as cliente_pedido, clientes.telefone as cliente_telefone, clientes.email as cliente_email');
         $this->db->select('vendedores.descricao as vendedor_pedido');
         $this->db->select('eventos.descricao as evento_pedido');
-        $this->db->select('(SELECT GROUP_CONCAT(DISTINCT grupos_categorias.nome ORDER BY grupos_categorias.nome SEPARATOR ", ") FROM pedido_produto LEFT JOIN produtos ON produtos.id = pedido_produto.produtos_id LEFT JOIN categorias ON categorias.id = produtos.categorias_id LEFT JOIN grupos_categorias ON grupos_categorias.id = categorias.grupos_categorias_id WHERE pedido_produto.pedidos_id = pedidos.id) as categoria_pedido', false);
-        $this->db->select('(SELECT GROUP_CONCAT(DISTINCT categorias.nome ORDER BY categorias.nome SEPARATOR ", ") FROM pedido_produto LEFT JOIN produtos ON produtos.id = pedido_produto.produtos_id LEFT JOIN categorias ON categorias.id = produtos.categorias_id WHERE pedido_produto.pedidos_id = pedidos.id) as subcategoria_pedido', false);
+        $this->db->select('(SELECT GROUP_CONCAT(DISTINCT CONCAT(grupos_categorias.id, " - ", grupos_categorias.nome) ORDER BY grupos_categorias.nome SEPARATOR ", ") FROM pedido_produto LEFT JOIN produtos ON produtos.id = pedido_produto.produtos_id LEFT JOIN categorias ON categorias.id = produtos.categorias_id LEFT JOIN grupos_categorias ON grupos_categorias.id = categorias.grupos_categorias_id WHERE pedido_produto.pedidos_id = pedidos.id) as categoria_pedido', false);
+        $this->db->select('(SELECT GROUP_CONCAT(DISTINCT CONCAT(categorias.id, " - ", categorias.nome) ORDER BY categorias.nome SEPARATOR ", ") FROM pedido_produto LEFT JOIN produtos ON produtos.id = pedido_produto.produtos_id LEFT JOIN categorias ON categorias.id = produtos.categorias_id WHERE pedido_produto.pedidos_id = pedidos.id) as subcategoria_pedido', false);
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id=contas_receber.pedidos_id','left');
         $this->db->join('clientes', 'clientes.id=pedidos.clientes_id','left');
@@ -803,7 +803,7 @@ class Pedidos_model extends CI_Model {
     }
 
     function get_demonstrativo_pagar_novo_paginated($inicio, $fim, $origem, $vendedor, $plano_conta, $referencia, $formapgto, $situacaopgto, $limit, $offset){
-        $this->db->select('contas_pagar.*, fornecedores.nome as fornecedor,plano_contas.descricao as plano_conta, plano_contas.cod as cod_plano_conta, plano_contas_pai.descricao as categoria_despesa, plano_contas.descricao as subcategoria_despesa');
+        $this->db->select('contas_pagar.*, fornecedores.nome as fornecedor,plano_contas.descricao as plano_conta, plano_contas.cod as cod_plano_conta, plano_contas_pai.cod as codigo_categoria_despesa, plano_contas_pai.descricao as categoria_despesa, plano_contas.cod as codigo_subcategoria_despesa, plano_contas.descricao as subcategoria_despesa');
         $this->db->from('contas_pagar');
         $this->db->join('fornecedores','fornecedores.id = contas_pagar.fornecedores_id');
         $this->db->join('plano_contas','plano_contas.id = contas_pagar.plano_contas_id');
