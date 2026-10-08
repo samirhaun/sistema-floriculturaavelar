@@ -602,13 +602,15 @@
                                     <?php endif; ?>
                                     <div class="table-responsive">
                                     <table class="table table-striped table-bordered tabela-fluxo">
-                                        <thead><tr><th>Código</th><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Data Pago</th><th>Forma Pgto</th></tr></thead>
+                                        <thead><tr><th>Código</th><th>Cliente</th><th>Categoria</th><th>Subcategoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Data Pago</th><th>Forma Pgto</th></tr></thead>
                                         <tbody>
                                             <?php if(!empty($pedidos_pag)): foreach($pedidos_pag as $r): ?>
                                             <?php $cancelada_relatorio = !empty($r->cancelada_relatorio); ?>
                                             <tr class="<?php echo $cancelada_relatorio ? 'linha-cancelada' : ''; ?>">
                                                 <td><?php echo $r->id; ?></td>
                                                 <td><?php echo $r->cliente_pedido; ?></td>
+                                                <td><?php echo !empty($r->categoria_pedido) ? htmlspecialchars($r->categoria_pedido, ENT_QUOTES, 'UTF-8') : '-'; ?></td>
+                                                <td><?php echo !empty($r->subcategoria_pedido) ? htmlspecialchars($r->subcategoria_pedido, ENT_QUOTES, 'UTF-8') : '-'; ?></td>
                                                 <td><?php echo date("d/m/Y", strtotime($r->vencimento_receita)); ?></td>
                                                 <td>R$ <?php echo number_format($r->valor_receita, 2, ',', '.'); ?><?php echo $cancelada_relatorio ? ' <span class="badge badge-cancelada">fora dos totais</span>' : ''; ?></td>
                                                 <td><?php echo $cancelada_relatorio ? '<span class="badge badge-cancelada">Cancelada</span>' : (($r->status_receita == 0) ? '<span class="badge badge-aberto">Em aberto</span>' : '<span class="badge badge-pago">Pago</span>'); ?></td>
@@ -616,7 +618,7 @@
                                                 <td><?php echo isset($nomes_forma_pgto[$r->forma_pgto_receita]) ? $nomes_forma_pgto[$r->forma_pgto_receita] : '-'; ?></td>
                                             </tr>
                                             <?php endforeach; else: ?>
-                                            <tr><td colspan="7" class="text-center text-muted">Nenhuma receita</td></tr>
+                                            <tr><td colspan="9" class="text-center text-muted">Nenhuma receita</td></tr>
                                             <?php endif; ?>
                                         </tbody>
                                     </table>
@@ -639,12 +641,14 @@
                                     <?php endif; ?>
                                     <div class="table-responsive">
                                     <table class="table table-striped table-bordered tabela-fluxo" style="background:#fff5f5;">
-                                        <thead><tr><th>Código</th><th>Fornecedor</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Data Pago</th><th>Forma Pgto</th></tr></thead>
+                                        <thead><tr><th>Código</th><th>Fornecedor</th><th>Categoria</th><th>Subcategoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Data Pago</th><th>Forma Pgto</th></tr></thead>
                                         <tbody>
                                             <?php if(!empty($contas_pag)): foreach($contas_pag as $c): ?>
                                             <tr>
                                                 <td><?php echo $c->id; ?></td>
                                                 <td><?php echo $c->fornecedor; ?></td>
+                                                <td><?php echo !empty($c->categoria_despesa) ? htmlspecialchars($c->categoria_despesa, ENT_QUOTES, 'UTF-8') : (!empty($c->plano_conta) ? htmlspecialchars($c->plano_conta, ENT_QUOTES, 'UTF-8') : '-'); ?></td>
+                                                <td><?php echo !empty($c->categoria_despesa) && !empty($c->subcategoria_despesa) ? htmlspecialchars($c->subcategoria_despesa, ENT_QUOTES, 'UTF-8') : '-'; ?></td>
                                                 <td><?php echo date("d/m/Y", strtotime($c->data_vencimento)); ?></td>
                                                 <td>R$ <?php echo number_format($c->valor, 2, ',', '.'); ?></td>
                                                 <td><?php echo ($c->status == 0) ? '<span class="badge badge-aberto">Em aberto</span>' : '<span class="badge badge-pago">Paga</span>'; ?></td>
@@ -652,7 +656,7 @@
                                                 <td><?php echo isset($nomes_forma_pgto[$c->forma_pgto]) ? $nomes_forma_pgto[$c->forma_pgto] : '-'; ?></td>
                                             </tr>
                                             <?php endforeach; else: ?>
-                                            <tr><td colspan="7" class="text-center text-muted">Nenhuma despesa</td></tr>
+                                            <tr><td colspan="9" class="text-center text-muted">Nenhuma despesa</td></tr>
                                             <?php endif; ?>
                                         </tbody>
                                     </table>
