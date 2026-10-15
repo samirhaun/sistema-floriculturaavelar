@@ -627,6 +627,11 @@
 
                                 <!-- SUB-TAB DESPESAS -->
                                 <div class="tab-pane" id="sub-desp">
+                                    <div class="clearfix hidden-print" style="margin-bottom:8px;">
+                                        <button class="btn btn-success btn-sm pull-right btn-exportar-contas-pagar" type="button" data-export-url="<?php echo base_url(array('loja', 'exportar-contas-pagar-relatorio-novo')); ?>">
+                                            <i class="fa fa-download"></i> Exportar tudo
+                                        </button>
+                                    </div>
                                     <?php if($total_pages_despesas > 1): ?>
                                     <div class="pagination-wrapper hidden-print" style="margin-bottom:8px;">
                                         <span style="font-size:11px;"><?php echo $total_despesas_count; ?> registros — pág. <?php echo $page_despesas; ?>/<?php echo $total_pages_despesas; ?></span>

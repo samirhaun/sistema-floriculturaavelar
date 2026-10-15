@@ -360,6 +360,8 @@
     e.preventDefault();
     var page = $(this).data('page');
     var table = $(this).data('table');
+    var subTabId = $(this).closest('.tab-pane[id^="sub-"]').attr('id');
+    var activeSubTab = subTabId ? '#' + subTabId : null;
     var $btn = $(this);
     $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
 
@@ -370,10 +372,30 @@
     formData.push({name: 'page_despesas', value: ($('#sub-desp').hasClass('active') ? page : ($('#page_despesas_val').val() || 1))});
     formData.push({name: table, value: page});
 
-    doAjaxPagination(formData, '#tab-lancamentos', $btn);
+    doAjaxPagination(formData, '#tab-lancamentos', $btn, activeSubTab);
   });
 
-  function doAjaxPagination(formData, activeTab, $btn){
+  $('#tabela_resultados').on('click', '.btn-exportar-contas-pagar', function(e){
+    e.preventDefault();
+    var form = document.createElement('form');
+    form.method = 'post';
+    form.action = $(this).data('export-url');
+    form.style.display = 'none';
+
+    $.each($('#form-faturamento').serializeArray(), function(_, field){
+      var input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = field.name;
+      input.value = field.value;
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+  });
+
+  function doAjaxPagination(formData, activeTab, $btn, activeSubTab){
     $.ajax({
       url: $('#form-faturamento').attr('action'),
       type: 'POST',
@@ -385,6 +407,7 @@
           var inner = $temp.find('#tabela_resultados').html();
           $('#tabela_resultados').html(inner);
           if(activeTab) $('#tabela_resultados').find('.nav-tabs a[href="' + activeTab + '"]').tab('show');
+          if(activeSubTab) $('#tabela_resultados').find('.nav-pills a[href="' + activeSubTab + '"]').tab('show');
           $('html, body').animate({ scrollTop: $('#tabela_resultados').offset().top - 80 }, 300);
         }
       },
