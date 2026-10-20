@@ -366,6 +366,8 @@ $route['loja/buscar-pedidos-relatorios']                   = "Loja_demonstrativo
 $route['loja/demonstrativo-novo']                          = "Loja_demonstrativo/demonstrativo_novo";
 $route['loja/buscar-pedidos-relatorios-novo']                   = "Loja_demonstrativo/demonstrativo_buscar_novo";
 $route['loja/exportar-contas-pagar-relatorio-novo']             = "Loja_demonstrativo/exportar_contas_pagar_novo";
+$route['loja/exportar-contas-receber-relatorio-novo']           = "Loja_demonstrativo/exportar_contas_receber_novo";
+$route['loja/exportar-lancamentos-relatorio-novo']               = "Loja_demonstrativo/exportar_lancamentos_novo";
 
 $route['loja/relatorio-vendas']                            = "Loja_relatorio_vendas/index";
 $route['loja/relatorio-vendas/buscar']                     = "Loja_relatorio_vendas/buscar";

@@ -375,7 +375,7 @@
     doAjaxPagination(formData, '#tab-lancamentos', $btn, activeSubTab);
   });
 
-  $('#tabela_resultados').on('click', '.btn-exportar-contas-pagar', function(e){
+  $('#tabela_resultados').on('click', '.btn-exportar-xlsx', function(e){
     e.preventDefault();
     var form = document.createElement('form');
     form.method = 'post';

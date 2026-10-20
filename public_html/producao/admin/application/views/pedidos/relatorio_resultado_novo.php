@@ -55,6 +55,7 @@
                             <h5>Resultado: <?php echo $filtro_inicio; ?> a <?php echo $filtro_fim; ?></h5>
                         </div>
                         <div class="col-lg-6 text-right">
+                            <button class="btn btn-primary btn-exportar-xlsx" type="button" data-export-url="<?php echo base_url(array('loja', 'exportar-lancamentos-relatorio-novo')); ?>"><i class="fa fa-file-excel-o"></i> Exportar tudo (Excel)</button>
                             <button class="btn btn-success" onclick="imprimir_resultado()" type="button"><i class="fa fa-print"></i> Imprimir</button>
                         </div>
                     </div>
@@ -588,6 +589,11 @@
                             <div class="tab-content">
                                 <!-- SUB-TAB RECEITAS -->
                                 <div class="tab-pane active" id="sub-rec">
+                                    <div class="clearfix hidden-print" style="margin-bottom:8px;">
+                                        <button class="btn btn-success btn-sm pull-right btn-exportar-xlsx" type="button" data-export-url="<?php echo base_url(array('loja', 'exportar-contas-receber-relatorio-novo')); ?>">
+                                            <i class="fa fa-download"></i> Exportar contas a receber
+                                        </button>
+                                    </div>
                                     <?php if($total_pages_receitas > 1): ?>
                                     <div class="pagination-wrapper hidden-print" style="margin-bottom:8px;">
                                         <span style="font-size:11px;"><?php echo $total_receitas_count; ?> registros — pág. <?php echo $page_receitas; ?>/<?php echo $total_pages_receitas; ?></span>
@@ -628,8 +634,8 @@
                                 <!-- SUB-TAB DESPESAS -->
                                 <div class="tab-pane" id="sub-desp">
                                     <div class="clearfix hidden-print" style="margin-bottom:8px;">
-                                        <button class="btn btn-success btn-sm pull-right btn-exportar-contas-pagar" type="button" data-export-url="<?php echo base_url(array('loja', 'exportar-contas-pagar-relatorio-novo')); ?>">
-                                            <i class="fa fa-download"></i> Exportar tudo
+                                        <button class="btn btn-success btn-sm pull-right btn-exportar-xlsx" type="button" data-export-url="<?php echo base_url(array('loja', 'exportar-contas-pagar-relatorio-novo')); ?>">
+                                            <i class="fa fa-download"></i> Exportar contas a pagar
                                         </button>
                                     </div>
                                     <?php if($total_pages_despesas > 1): ?>
