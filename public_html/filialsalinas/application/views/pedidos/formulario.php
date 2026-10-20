@@ -233,7 +233,17 @@
              <div class="col-md-3">
                 <div class="form-group">
                  <label class="control-label">Bairro de entrega:</label>
-                 <input type="text" name="bairro_entrega" class="form-control" value="<?php echo (isset($pedido)) ? $pedido->bairro_entrega : '' ?>" onchange="lanca_frete_bairro(this.value)"  >
+                 <select name="bairros_frete_id" id="bairros_frete_id" class="form-control" style="width: 100%">
+                   <?php if(isset($bairro_frete_atual)): ?>
+                     <option value="<?php echo $bairro_frete_atual->id ?>" selected>
+                       <?php echo $bairro_frete_atual->nome ?> (R$ <?php echo number_format($bairro_frete_atual->valor_frete, 2, ',', '.') ?>)
+                     </option>
+                   <?php endif; ?>
+                 </select>
+                 <input type="hidden" name="bairro_entrega" id="bairro_entrega" value="<?php echo (isset($pedido)) ? $pedido->bairro_entrega : '' ?>">
+                 <?php if(isset($pedido) && $pedido->bairro_entrega && !isset($bairro_frete_atual)): ?>
+                   <div class="text-warning" style="margin-top:4px;font-size:12px;">Bairro salvo antes deste cadastro existir: "<?php echo $pedido->bairro_entrega ?>". Selecione o bairro correto na lista pra ligar o frete automático.</div>
+                 <?php endif; ?>
                </div>
              </div>
 
@@ -2408,6 +2418,7 @@ $('.data_mask').datepicker({
            // Limpa valores do formulário de cep.
            $("[name=rua_entrega]").val("");
            $("[name=bairro_entrega]").val("");
+           $('#bairros_frete_id').val(null).trigger('change');
            $("[name=cidade_entrega]").val("");
            $("[name=estado_entrega]").val("");
            $("#ibge").val("");
@@ -2443,6 +2454,7 @@ $('.data_mask').datepicker({
                            $("[name=bairro_entrega]").val(dados.bairro);
                            $("[name=cidade_entrega]").val(dados.localidade);
                            $("[name=estado_entrega]").val(dados.uf);
+                           selecionarBairroPorNome(dados.bairro);
                        } //end if.
                        else {
                            //CEP pesquisado não foi encontrado.
@@ -2567,7 +2579,7 @@ $('.data_mask').datepicker({
                   // $("[name=cidade_entrega]").val(result.endereco.cidade);
 
                   //verificando se possui frete
-                  lanca_frete_bairro(result.endereco.bairro)
+                  selecionarBairroPorNome(result.endereco.bairro)
 
                   
               },
@@ -2806,28 +2818,76 @@ $('.data_mask').datepicker({
       }
 
 
-      function lanca_frete_bairro(termo)
+      // Ponto único que aplica um bairro escolhido (id + text + valor_frete)
+      // na tela inteira: select2, campo escondido de snapshot (bairro_entrega)
+      // e o valor do frete. Usada tanto quando o atendente escolhe no select2
+      // quanto quando o código pré-seleciona automaticamente (ViaCEP/endereço
+      // salvo) -- não dá pra confiar só no evento select2:select porque ele
+      // não dispara em seleção feita via código.
+      function definirBairro(item)
       {
+        var $select = $('#bairros_frete_id');
+        if($select.find("option[value='" + item.id + "']").length === 0){
+          var opt = new Option(item.text, item.id, true, true);
+          $select.append(opt);
+        }
+        $select.val(item.id).trigger('change');
+
+        $('#bairro_entrega').val(item.text);
+        if(item.valor_frete !== undefined && item.valor_frete !== null){
+          $('#valor_frete').val(parseFloat(item.valor_frete).toFixed(2));
+          calcula_pedito_total();
+        }
+      }
+
+      // Busca o bairro pelo nome (vindo do ViaCEP ou de um endereço salvo do
+      // cliente) e, quando o resultado é único e claro, pré-seleciona no
+      // select2 de bairro -- aplicando o frete automaticamente. Se vier
+      // ambíguo ou não achar nada, não decide sozinho: o atendente escolhe
+      // manualmente no select2.
+      function selecionarBairroPorNome(termo)
+      {
+        if(!termo || $.trim(termo).length < 2){
+          return;
+        }
 
         $.ajax({
-          url: '<?php echo base_url(['site/get-frete-termo']) ?>',
-          type: 'POST',
-          data: {
-            termo: termo,
-        },
+          url: '<?php echo base_url(['site', 'buscar-bairro-frete']) ?>',
+          type: 'GET',
+          data: { q: termo },
 
-        success: function(result) {
-
-            if(result > 0){
-              $('#valor_frete').val(result)
-              swal('Frete aplicado', 'Frete para '+termo+' aplicado.', 'success');
+          success: function(resp) {
+            if(resp.results && resp.results.length === 1){
+              definirBairro(resp.results[0]);
+              swal('Frete aplicado', 'Bairro "' + resp.results[0].text + '" selecionado automaticamente.', 'success');
             }
-
-        },
-
+          },
         });
-
       }
+
+      $('#bairros_frete_id').select2({
+        placeholder: 'Selecione o bairro',
+        allowClear: true,
+        minimumInputLength: 2,
+        ajax: {
+          url: '<?php echo base_url(['site', 'buscar-bairro-frete']) ?>',
+          dataType: 'json',
+          delay: 250,
+          data: function(params) { return { q: params.term }; },
+          processResults: function(data) { return data; },
+          cache: true
+        }
+      });
+
+      // Escolha manual do atendente no dropdown (evento genuíno do select2,
+      // já traz o objeto completo vindo do JSON de busca).
+      $('#bairros_frete_id').on('select2:select', function(e){
+        definirBairro(e.params.data);
+      });
+
+      $('#bairros_frete_id').on('select2:clear', function(){
+        $('#bairro_entrega').val('');
+      });
 
   </script>
 

@@ -6,6 +6,13 @@ class TEC_Controller extends CI_Controller {
     public function __construct()
     {
         parent::__construct();
+
+        // Mantem consultas que usam NOW() no mesmo fuso exibido no sistema.
+        // O offset -03:00 e' o de America/Sao_Paulo no momento; a referencia
+        // principal de data/hora continua sendo o timezone nomeado acima.
+        if (isset($this->db) && $this->db) {
+            $this->db->query("SET time_zone = '-03:00'");
+        }
     }
 
     public function set_menu_active($menu='')

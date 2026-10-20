@@ -6,6 +6,7 @@ class Loja_produtos extends TEC_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->model('loja/produtos_model');
+        $this->load->model('loja/grupos_fiscais_nfce_model');
         $this->load->helper('form');
         $this->load->helper('text');
 
@@ -25,11 +26,12 @@ class Loja_produtos extends TEC_Controller {
 
     public function lista()
     {
-        $data['produtos'] =  $this->produtos_model->get_produtos();
-
-        //  echo '<pre>';
-        // print_r( $data['produtos']);
-        // exit;
+        $status = $this->input->get('status');
+        if (!in_array($status, array('ativos', 'inativos', 'todos'), true)) {
+            $status = 'ativos';
+        }
+        $data['status_filtro'] = $status;
+        $data['produtos'] = $this->produtos_model->get_produtos_lista($status);
 
         if($this->input->get('type')){
             $notification = new stdClass;
@@ -43,9 +45,87 @@ class Loja_produtos extends TEC_Controller {
         $this->montaTela('loja/lista', $data);
     }
 
+    // Tela dedicada só pra editar custo/margem, sem precisar abrir o
+    // cadastro completo de cada produto um por um.
+    public function custos()
+    {
+        $data['produtos'] = $this->produtos_model->get_produtos_com_categoria();
+        $this->montaTela('loja/produtos_custos', $data);
+    }
+
+    public function grupos_fiscais()
+    {
+        if (!check_habilidade('visualizar_produtos')) { show_error('Acesso negado.', 403); }
+        $data['grupos'] = $this->grupos_fiscais_nfce_model->listar();
+        $data['grupo_edicao'] = $this->input->get('id') ? $this->grupos_fiscais_nfce_model->buscar($this->input->get('id')) : null;
+        $this->montaTela('loja/grupos_fiscais/lista', $data);
+    }
+
+    public function salvar_grupo_fiscal()
+    {
+        if (!check_habilidade('visualizar_produtos')) { show_error('Acesso negado.', 403); }
+        $id = (int) $this->input->post('id');
+        $dados = array(
+            'nome' => trim($this->input->post('nome')),
+            'ncm' => preg_replace('/\D/', '', $this->input->post('ncm')),
+            'csosn' => trim($this->input->post('csosn')),
+            'pis_cst' => trim($this->input->post('pis_cst')),
+            'cofins_cst' => trim($this->input->post('cofins_cst')),
+            'ativo' => $this->input->post('ativo') ? 1 : 0,
+            'updated_at' => date('Y-m-d H:i:s'),
+        );
+        if (!$id) $dados['created_at'] = date('Y-m-d H:i:s');
+        if (strlen($dados['ncm']) < 2 || !$dados['nome']) {
+            redirect('loja/grupos-fiscais?type=error&title=Grupo+fiscal&message='.urlencode('Informe nome e NCM validos.'));
+            return;
+        }
+        $this->grupos_fiscais_nfce_model->salvar($dados, $id ?: null);
+        redirect('loja/grupos-fiscais?type=success&title=Grupo+fiscal&message='.urlencode('Grupo fiscal salvo.'));
+    }
+
+    public function revisar_classificacao_fiscal()
+    {
+        if (!check_habilidade('visualizar_produtos')) { show_error('Acesso negado.', 403); }
+        $ano = (int) ($this->input->get('ano') ?: date('Y'));
+        $data['ano'] = $ano;
+        $data['grupos_fiscais_nfce'] = $this->grupos_fiscais_nfce_model->ativos();
+        $data['produtos'] = $this->produtos_model->pendentes_classificacao_fiscal($ano);
+        $this->montaTela('loja/revisao_classificacao_fiscal', $data);
+    }
+
+    public function aprovar_classificacao_fiscal()
+    {
+        if (!check_habilidade('visualizar_produtos')) { show_error('Acesso negado.', 403); }
+        $selecionados = (array) $this->input->post('produtos');
+        $grupos_post = (array) $this->input->post('grupos');
+        $grupos_validos = array();
+        foreach ($this->grupos_fiscais_nfce_model->ativos() as $grupo) $grupos_validos[(int) $grupo->id] = true;
+        $vinculos = array();
+        foreach ($selecionados as $produto_id) {
+            $grupo_id = isset($grupos_post[$produto_id]) ? (int) $grupos_post[$produto_id] : 0;
+            if ($produto_id && isset($grupos_validos[$grupo_id])) $vinculos[(int) $produto_id] = $grupo_id;
+        }
+        if (!empty($vinculos)) $this->produtos_model->aprovar_grupos_fiscais($vinculos);
+        redirect('loja/revisar-classificacao-fiscal?ano='.(int)$this->input->post('ano').'&type=success&title=Classificacao+fiscal&message='.urlencode(count($vinculos).' produtos vinculados.'));
+    }
+
+    public function salvar_custo()
+    {
+        $id = (int) $this->input->post('id');
+        $valor_custo = str_replace(',', '.', $this->input->post('valor_custo'));
+        $valor_custo = ($valor_custo === '' || $valor_custo === null) ? null : (float) $valor_custo;
+
+        $ok = $id ? $this->produtos_model->atualizar_custo($id, $valor_custo) : false;
+
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode(array('sucesso' => (bool) $ok)));
+    }
+
     function novo_produto(){
        $data['categorias'] = $this->produtos_model->get_categorias();
        $data['marcas'] = $this->produtos_model->get_marcas();
+       $data['grupos_fiscais_nfce'] = $this->grupos_fiscais_nfce_model->ativos();
 
        $data['produtos'] =  $this->produtos_model->get_produtos();
 
@@ -101,6 +181,12 @@ class Loja_produtos extends TEC_Controller {
                 'tamanhos' => $tamanho,
                 'valor_frete' => $this->input->post('valor_frete'),
                 'descricao' => $this->input->post('descricao'),
+                'nfce_ncm' => preg_replace('/\D/', '', (string) $this->input->post('nfce_ncm')) ?: null,
+                'nfce_csosn' => $this->input->post('nfce_csosn') ?: null,
+                'nfce_pis_cst' => $this->input->post('nfce_pis_cst') ?: null,
+                'nfce_cofins_cst' => $this->input->post('nfce_cofins_cst') ?: null,
+                'nfce_cfop' => preg_replace('/\D/', '', (string) $this->input->post('nfce_cfop')) ?: null,
+                'grupos_fiscais_nfce_id' => $this->input->post('grupos_fiscais_nfce_id') ?: null,
                 'detalhes' => $this->input->post('detalhes'),
                 'estoque' => $this->input->post('estoque'),
                 'comprimento_embalagem' => $this->input->post('comprimento_embalagem'),
@@ -1065,8 +1151,14 @@ class Loja_produtos extends TEC_Controller {
                     )
                 );
 
+            $status = $this->input->get('status');
+            if (!in_array($status, array('ativos', 'inativos', 'todos'), true)) {
+                $status = 'ativos';
+            }
+            $response['status_filtro'] = $status;
+
             //vamos pegar todas entradas e saídas e depois montar as regras
-            $produtos_estoque = $this->produtos_model->posicao_estoque();
+            $produtos_estoque = $this->produtos_model->posicao_estoque($status);
 
             // echo '<pre>';
             // print_r($produtos_estoque);

@@ -304,6 +304,12 @@ $route['loja/excluir-promocao']                    = "Loja_promocoes_slides/excl
 
 //-->produtos
 $route['loja/produtos']                             = "Loja_produtos/lista";
+$route['loja/produtos-custos']                      = "Loja_produtos/custos";
+$route['loja/grupos-fiscais']                       = "Loja_produtos/grupos_fiscais";
+$route['loja/salvar-grupo-fiscal']                  = "Loja_produtos/salvar_grupo_fiscal";
+$route['loja/revisar-classificacao-fiscal']         = "Loja_produtos/revisar_classificacao_fiscal";
+$route['loja/aprovar-classificacao-fiscal']         = "Loja_produtos/aprovar_classificacao_fiscal";
+$route['loja/salvar-custo-produto']                 = "Loja_produtos/salvar_custo";
 $route['loja/novo-produto']                         = "Loja_produtos/novo_produto";
 $route['loja/salvar-produto']                       = "Loja_produtos/salvar_produto";
 $route['loja/editar-produto']                       = "Loja_produtos/editar_produto";
@@ -352,6 +358,12 @@ $route['loja/enderecos']                            = "Loja_clientes/lista_ender
 
 //-->pedidos
 $route['loja/pedidos']                               = "Loja_pedidos/lista";
+$route['loja/notas-fiscais']                         = "Loja_notas_fiscais/lista";
+$route['loja/sintegra']                              = "Loja_notas_fiscais/sintegra";
+$route['loja/sintegra/download']                     = "Loja_notas_fiscais/sintegra_download";
+$route['loja/nfce/emitir']                           = "Loja_notas_fiscais/emitir";
+$route['loja/nfce/imprimir']                         = "Loja_notas_fiscais/imprimir";
+$route['loja/nfce/xml']                              = "Loja_notas_fiscais/xml";
 $route['loja/detalhes-pedido']                       = "Loja_pedidos/detalhes_pedido";
 $route['loja/imprimir']                              = "Loja_pedidos/detalhes_pedido";
 $route['loja/editar-pedido']                         = "Loja_pedidos/editar_pedido";
@@ -457,3 +469,12 @@ $route['site/novo-transparencia']                          = "Site_transparencia
 $route['site/salvar-transparencia']                        = "Site_transparencia/salvar_transparencia";
 $route['site/editar-transparencia']                        = "Site_transparencia/editar_transparencia";
 $route['site/excluir-transparencia']                       = "Site_transparencia/excluir_transparencia";
+
+//-->Fretes por bairro
+$route['site/bairros-frete']                              = "Site_bairros_frete/lista";
+$route['site/novo-bairro-frete']                          = "Site_bairros_frete/novo";
+$route['site/salvar-bairro-frete']                        = "Site_bairros_frete/salvar";
+$route['site/editar-bairro-frete']                        = "Site_bairros_frete/editar";
+$route['site/excluir-bairro-frete']                       = "Site_bairros_frete/excluir";
+$route['site/buscar-bairro-frete']                        = "Site_bairros_frete/buscar";
+$route['site/checar-bairro-parecido']                     = "Site_bairros_frete/checar_parecido";

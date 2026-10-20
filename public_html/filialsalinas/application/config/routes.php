@@ -304,6 +304,8 @@ $route['loja/excluir-promocao']                    = "Loja_promocoes_slides/excl
 
 //-->produtos
 $route['loja/produtos']                             = "Loja_produtos/lista";
+$route['loja/produtos-custos']                      = "Loja_produtos/custos";
+$route['loja/salvar-custo-produto']                 = "Loja_produtos/salvar_custo";
 $route['loja/novo-produto']                         = "Loja_produtos/novo_produto";
 $route['loja/salvar-produto']                       = "Loja_produtos/salvar_produto";
 $route['loja/editar-produto']                       = "Loja_produtos/editar_produto";
@@ -454,3 +456,12 @@ $route['site/novo-transparencia']                          = "Site_transparencia
 $route['site/salvar-transparencia']                        = "Site_transparencia/salvar_transparencia";
 $route['site/editar-transparencia']                        = "Site_transparencia/editar_transparencia";
 $route['site/excluir-transparencia']                       = "Site_transparencia/excluir_transparencia";
+
+//-->Fretes por bairro
+$route['site/bairros-frete']                              = "Site_bairros_frete/lista";
+$route['site/novo-bairro-frete']                          = "Site_bairros_frete/novo";
+$route['site/salvar-bairro-frete']                        = "Site_bairros_frete/salvar";
+$route['site/editar-bairro-frete']                        = "Site_bairros_frete/editar";
+$route['site/excluir-bairro-frete']                       = "Site_bairros_frete/excluir";
+$route['site/buscar-bairro-frete']                        = "Site_bairros_frete/buscar";
+$route['site/checar-bairro-parecido']                     = "Site_bairros_frete/checar_parecido";

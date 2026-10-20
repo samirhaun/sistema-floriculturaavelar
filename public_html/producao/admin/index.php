@@ -56,6 +56,10 @@
 	define('ENVIRONMENT', 'development');
 
 	ini_set('memory_limit', '-1'); 
+	// A operacao de Montes Claros e' feita no horario de Brasilia. A definicao
+	// explicita evita que a hora da impressao e a hora enviada ao emissor fiscal
+	// dependam da configuracao padrao do servidor.
+	date_default_timezone_set('America/Sao_Paulo');
 /*
  *---------------------------------------------------------------
  * ERROR REPORTING

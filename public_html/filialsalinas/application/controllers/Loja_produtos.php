@@ -25,11 +25,12 @@ class Loja_produtos extends TEC_Controller {
 
     public function lista()
     {
-        $data['produtos'] =  $this->produtos_model->get_produtos();
-
-        //  echo '<pre>';
-        // print_r( $data['produtos']);
-        // exit;
+        $status = $this->input->get('status');
+        if (!in_array($status, array('ativos', 'inativos', 'todos'), true)) {
+            $status = 'ativos';
+        }
+        $data['status_filtro'] = $status;
+        $data['produtos'] = $this->produtos_model->get_produtos_lista($status);
 
         if($this->input->get('type')){
             $notification = new stdClass;
@@ -41,6 +42,27 @@ class Loja_produtos extends TEC_Controller {
 
 
         $this->montaTela('loja/lista', $data);
+    }
+
+    // Tela dedicada só pra editar custo/margem, sem precisar abrir o
+    // cadastro completo de cada produto um por um.
+    public function custos()
+    {
+        $data['produtos'] = $this->produtos_model->get_produtos_com_categoria();
+        $this->montaTela('loja/produtos_custos', $data);
+    }
+
+    public function salvar_custo()
+    {
+        $id = (int) $this->input->post('id');
+        $valor_custo = str_replace(',', '.', $this->input->post('valor_custo'));
+        $valor_custo = ($valor_custo === '' || $valor_custo === null) ? null : (float) $valor_custo;
+
+        $ok = $id ? $this->produtos_model->atualizar_custo($id, $valor_custo) : false;
+
+        $this->output
+            ->set_content_type('application/json')
+            ->set_output(json_encode(array('sucesso' => (bool) $ok)));
     }
 
     function novo_produto(){
@@ -1065,8 +1087,14 @@ class Loja_produtos extends TEC_Controller {
                     )
                 );
 
+            $status = $this->input->get('status');
+            if (!in_array($status, array('ativos', 'inativos', 'todos'), true)) {
+                $status = 'ativos';
+            }
+            $response['status_filtro'] = $status;
+
             //vamos pegar todas entradas e saídas e depois montar as regras
-            $produtos_estoque = $this->produtos_model->posicao_estoque();
+            $produtos_estoque = $this->produtos_model->posicao_estoque($status);
 
             // echo '<pre>';
             // print_r($produtos_estoque);

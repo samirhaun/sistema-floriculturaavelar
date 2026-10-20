@@ -7,6 +7,7 @@ class Loja_pedidos extends TEC_Controller {
         parent::__construct();
         $this->load->model('loja/pedidos_model');
         $this->load->model('loja/taxas_cartao_model');
+        $this->load->model('loja/notas_fiscais_model');
 
         $this->set_menu_active(
                             array(
@@ -245,6 +246,7 @@ class Loja_pedidos extends TEC_Controller {
         $data['pedido'] = $this->pedidos_model->get_pedido($this->input->get('id'));
 
         $data['produtos'] = $this->pedidos_model->get_pedido_produtos($this->input->get('id'));
+        $data['nota_fiscal'] = $this->notas_fiscais_model->buscar_por_pedido($this->input->get('id'));
 
         // echo '<pre>';
         // print_r($data['pedido']);

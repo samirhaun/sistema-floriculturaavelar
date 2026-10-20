@@ -55,6 +55,10 @@
  */
 	define('ENVIRONMENT', 'production');
 
+	// A filial opera no horario de Brasilia, sem depender do fuso padrao do
+	// servidor. Isto tambem protege a data/hora enviada ao emissor fiscal.
+	date_default_timezone_set('America/Sao_Paulo');
+
 /*
  *---------------------------------------------------------------
  * ERROR REPORTING

@@ -4,9 +4,22 @@
       <div class="ibox float-e-margins">
         <div class="ibox-title hidden-print" style="min-height: 64px;">
           <div class="row">
-            <div class="col-lg-12 text-right">
+            <div class="col-lg-6">
+              <ul class="nav nav-tabs" style="border-bottom:none;">
+                <li class="<?php echo ($status_filtro == 'ativos') ? 'active' : '' ?>">
+                    <a href="<?php echo base_url(array('loja', 'posicao-estoque')) ?>?status=ativos">Ativos</a>
+                </li>
+                <li class="<?php echo ($status_filtro == 'inativos') ? 'active' : '' ?>">
+                    <a href="<?php echo base_url(array('loja', 'posicao-estoque')) ?>?status=inativos">Inativos</a>
+                </li>
+                <li class="<?php echo ($status_filtro == 'todos') ? 'active' : '' ?>">
+                    <a href="<?php echo base_url(array('loja', 'posicao-estoque')) ?>?status=todos">Todos</a>
+                </li>
+              </ul>
+            </div>
+            <div class="col-lg-6 text-right">
               <button class="btn btn-success" onclick="imprimir_resultado()" type="button"><i class="fa fa-print"></i><span class="bold"> Imprimir</span></button>
-                          
+
             </div>
           </div>
         </div>

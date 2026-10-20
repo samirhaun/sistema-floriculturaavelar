@@ -24,15 +24,27 @@ class Loja_relatorio_pendencias extends TEC_Controller {
             $totais = $this->pedidos_model->get_pendencias_totais($inicio, $fim);
             $data['total_pendente'] = $totais->total;
             $data['qtd_parcelas'] = $totais->qtd;
+            $data['total_duplicata'] = $totais->total_duplicata;
+            $data['qtd_parcelas_duplicata'] = $totais->qtd_duplicata;
             $data['ticket_medio'] = ($totais->qtd > 0) ? ($totais->total / $totais->qtd) : 0;
 
-            $data['pendencias'] = $this->pedidos_model->get_pendencias($inicio, $fim);
+            // Duplicata (forma_pgto = 7) e' venda a prazo: fica isolada da lista/total principal,
+            // mas listada a parte para nao sumir do relatorio.
+            $pendencias_todas = $this->pedidos_model->get_pendencias($inicio, $fim);
+            $data['pendencias'] = array();
+            $data['pendencias_duplicata'] = array();
+            if(!empty($pendencias_todas)){
+                foreach($pendencias_todas as $p){
+                    if((int) $p->forma_pgto === 7) $data['pendencias_duplicata'][] = $p;
+                    else $data['pendencias'][] = $p;
+                }
+            }
             $data['pendencias_vendedores'] = $this->pedidos_model->get_pendencias_por_vendedor($inicio, $fim);
             $data['hoje'] = date('Y-m-d');
 
             $pedidos_ids = array();
-            if(!empty($data['pendencias'])){
-                foreach($data['pendencias'] as $p){
+            if(!empty($pendencias_todas)){
+                foreach($pendencias_todas as $p){
                     $pedidos_ids[] = $p->pedido_cod;
                 }
                 $pedidos_ids = array_unique($pedidos_ids);

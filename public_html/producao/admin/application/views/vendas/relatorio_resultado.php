@@ -193,7 +193,7 @@
                             <div class="breakdown-box">
                                 <h5><i class="fa fa-cube text-success"></i> Vendas por produto</h5>
                                 <table class="table table-condensed" style="margin-bottom:0;">
-                                    <thead><tr><th style="width:30px;"></th><th>Produto</th><th>Categoria</th><th class="text-right sortable" data-sort="qtd" style="cursor:pointer;">Qtd <i class="fa fa-sort"></i></th><th class="text-right">Preço venda</th><th class="text-right">Custo un.</th><th class="text-right sortable" data-sort="total" style="cursor:pointer;">Total <i class="fa fa-sort"></i></th><th class="text-right">Lucro</th><th class="text-right" style="width:15%;">%</th></tr></thead>
+                                    <thead><tr><th style="width:30px;"></th><th>Produto</th><th>Categoria</th><th class="text-right sortable" data-sort="qtd" style="cursor:pointer;">Qtd <i class="fa fa-sort"></i></th><th class="text-right">Preço venda</th><th class="text-right">Custo un.</th><th class="text-right sortable" data-sort="total" style="cursor:pointer;">Venda total <i class="fa fa-sort"></i></th><th class="text-right">Custo total</th><th class="text-right">Lucro</th><th class="text-right" style="width:15%;">%</th></tr></thead>
                                     <tbody>
                                         <?php
                                         $total_geral = $total_vendido;
@@ -211,6 +211,7 @@
                                             <td class="text-right">R$ <?php echo number_format($p->preco_venda, 2, ',', '.'); ?></td>
                                             <td class="text-right" style="color:#888;"><?php echo $p->preco_custo > 0 ? 'R$ '.number_format($p->preco_custo, 2, ',', '.') : '-'; ?></td>
                                             <td class="text-right"><strong>R$ <?php echo number_format($p->total, 2, ',', '.'); ?></strong></td>
+                                            <td class="text-right" style="color:#888;"><?php echo $p->total_custo > 0 ? 'R$ '.number_format($p->total_custo, 2, ',', '.') : '-'; ?></td>
                                             <td class="text-right" style="color:<?php echo ($p->total_custo > 0 && $p->total > $p->total_custo) ? '#11998e' : '#888'; ?>;">
                                                 <?php 
                                                 $lucro = $p->total - $p->total_custo;
@@ -232,7 +233,7 @@
                                         </tr>
                                         <tr id="prod-detail-<?php echo $idx; ?>" class="cat-detail" style="display:none;">
                                             <td></td>
-                                            <td colspan="7" style="padding:0 15px 8px;">
+                                            <td colspan="9" style="padding:0 15px 8px;">
                                                 <table class="table table-condensed" style="background:#f5f5f5; margin-bottom:0; font-size:11px;">
                                                     <thead><tr><th>Pedido</th><th>Cliente</th><th>Data</th><th class="text-right">Qtd</th><th class="text-right">Vl.Unit</th><th class="text-right">Subtotal</th></tr></thead>
                                                     <tbody>
@@ -263,7 +264,15 @@
                                         <tr><td colspan="6" class="text-center text-muted">Nenhum produto encontrado</td></tr>
                                         <?php endif; ?>
                                     </tbody>
-                                    <tfoot><tr style="font-weight:700; border-top:2px solid #ddd;"><td></td><td>TOTAL</td><td></td><td class="text-right"><?php echo number_format($total_itens, 0, ',', '.'); ?></td><td></td><td></td><td class="text-right">R$ <?php echo number_format($total_geral, 2, ',', '.'); ?></td><td></td><td></td></tr></tfoot>
+                                    <?php
+                                        $total_custo_geral = 0;
+                                        if(!empty($produtos)){
+                                            foreach($produtos as $p){
+                                                $total_custo_geral += $p->total_custo;
+                                            }
+                                        }
+                                    ?>
+                                    <tfoot><tr style="font-weight:700; border-top:2px solid #ddd;"><td></td><td>TOTAL</td><td></td><td class="text-right"><?php echo number_format($total_itens, 0, ',', '.'); ?></td><td></td><td></td><td class="text-right">R$ <?php echo number_format($total_geral, 2, ',', '.'); ?></td><td class="text-right"><?php echo $total_custo_geral > 0 ? 'R$ '.number_format($total_custo_geral, 2, ',', '.') : '-'; ?></td><td class="text-right"><?php echo $total_custo_geral > 0 ? 'R$ '.number_format($total_geral - $total_custo_geral, 2, ',', '.') : '-'; ?></td><td></td></tr></tfoot>
                                 </table>
                             </div>
                         </div>
@@ -286,25 +295,43 @@ $('#tabela_resultados').on('click', '.cat-toggle', function(){
 $('#tabela_resultados').on('click', '.sortable', function(){
     var $th = $(this);
     var $table = $th.closest('table');
-    var $tbody = $table.find('tbody');
-    var rows = $tbody.find('tr:has(td)').not('.cat-detail').get();
+    var tbody = $table.find('tbody')[0];
     var sortBy = $th.data('sort');
     var asc = !$th.hasClass('sorted-asc');
+    var colIndex = sortBy === 'qtd' ? 3 : 6;
 
-    rows.sort(function(a, b){
-        var valA = parseFloat($(a).find('td').eq(sortBy === 'qtd' ? 3 : 6).text().replace(/[^0-9,]/g, '').replace(',', '.')) || 0;
-        var valB = parseFloat($(b).find('td').eq(sortBy === 'qtd' ? 3 : 6).text().replace(/[^0-9,]/g, '').replace(',', '.')) || 0;
-        return asc ? valB - valA : valA - valB;
+    // Pareia cada linha principal com sua linha de detalhe (se existir) e já
+    // extrai o valor de ordenação de cada uma ANTES de mexer no DOM ou de
+    // rodar o sort -- ler o texto da célula dentro do comparator (chamado
+    // O(n log n) vezes) e mover linha por linha (n reflows separados) numa
+    // tabela com várias centenas de produtos era pesado o suficiente pra
+    // travar a página por alguns segundos, o que parecia um freeze.
+    var pares = $(tbody).children('tr.cat-toggle').map(function(){
+        var row = this;
+        var detailRow = row.nextElementSibling;
+        var temDetalhe = detailRow && detailRow.classList.contains('cat-detail');
+        var texto = row.cells[colIndex].textContent.replace(/[^0-9,]/g, '').replace(',', '.');
+        return {
+            row: row,
+            detail: temDetalhe ? detailRow : null,
+            valor: parseFloat(texto) || 0
+        };
+    }).get();
+
+    pares.sort(function(a, b){
+        return asc ? b.valor - a.valor : a.valor - b.valor;
     });
 
     $th.closest('tr').find('.sortable i').attr('class', 'fa fa-sort');
     $th.find('i').attr('class', asc ? 'fa fa-sort-amount-desc' : 'fa fa-sort-amount-asc');
     $th.toggleClass('sorted-asc', asc).toggleClass('sorted-desc', !asc);
 
-    $.each(rows, function(i, row){
-        var detailRow = $(row).next('.cat-detail');
-        $tbody.append(row);
-        if(detailRow.length) $tbody.append(detailRow[0]);
+    // Monta tudo fora do DOM e anexa de uma vez só (1 reflow em vez de n).
+    var frag = document.createDocumentFragment();
+    pares.forEach(function(par){
+        frag.appendChild(par.row);
+        if(par.detail) frag.appendChild(par.detail);
     });
+    tbody.appendChild(frag);
 });
 </script>

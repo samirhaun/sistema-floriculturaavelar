@@ -235,6 +235,10 @@
                             <li id="Loja-produtos"><a href="<?php echo base_url(array('loja', 'produtos')) ?>">Produtos</a></li>
                             <?php endif; ?>
 
+                            <?php if(check_habilidade('visualizar_produtos')): ?>
+                            <li id="Loja-produtos-custos"><a href="<?php echo base_url(array('loja', 'produtos-custos')) ?>">Custos</a></li>
+                            <?php endif; ?>
+
                             <?php if(check_habilidade('visualizar_entrada_produtos')): ?>
                             <li id="Loja-produtos-entrada"><a href="<?php echo base_url(array('loja', 'produtos-entrada')) ?>">Entrada</a></li>
                             <?php endif; ?>
@@ -289,7 +293,7 @@
                             <li id="Loja-categorias"><a href="<?php echo base_url(array('loja', 'categorias')) ?>">Categorias</a></li>
                             <?php endif; ?>
                             <?php if(check_habilidade('visualizar_fretes')): ?>
-                            <li id="lista-transparencia"><a href="<?php echo base_url(array('site/transparencia')) ?>">Fretes Bairro</a></li>
+                            <li id="lista-bairros-frete"><a href="<?php echo base_url(array('site/bairros-frete')) ?>">Fretes por Bairro</a></li>
                             <?php endif; ?>
                         </ul>
                     </li>

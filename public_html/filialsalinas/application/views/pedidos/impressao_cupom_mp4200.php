@@ -65,7 +65,7 @@
 
 	
 
-    <span> <strong>  CUPOM </strong></span>
+    <span> <strong>  CUPOM - PEDIDO Nº <?php echo (int) $pedido->id; ?> </strong></span>
 
 
 
@@ -215,4 +215,3 @@ if($receita->forma_pgto == 1):
 
 </body>
 </html>
-

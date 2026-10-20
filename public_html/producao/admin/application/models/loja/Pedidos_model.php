@@ -1213,8 +1213,18 @@ class Pedidos_model extends CI_Model {
         $totais = new stdClass();
         $totais->total = 0;
         $totais->qtd = 0;
+        $totais->total_duplicata = 0;
+        $totais->qtd_duplicata = 0;
 
-        $this->db->select('SUM(contas_receber.valor) as total, COUNT(*) as qtd');
+        // Duplicata (forma_pgto = 7) e' venda a prazo: fica isolada do total pendente,
+        // mas contabilizada a parte para nao sumir do relatorio.
+        $this->db->select(
+            "SUM(CASE WHEN contas_receber.forma_pgto = 7 THEN 0 ELSE contas_receber.valor END) as total, " .
+            "SUM(CASE WHEN contas_receber.forma_pgto = 7 THEN 0 ELSE 1 END) as qtd, " .
+            "SUM(CASE WHEN contas_receber.forma_pgto = 7 THEN contas_receber.valor ELSE 0 END) as total_duplicata, " .
+            "SUM(CASE WHEN contas_receber.forma_pgto = 7 THEN 1 ELSE 0 END) as qtd_duplicata",
+            false
+        );
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
         $this->db->where('contas_receber.status', 0);
@@ -1226,12 +1236,23 @@ class Pedidos_model extends CI_Model {
         if($row){
             $totais->total = $row->total;
             $totais->qtd = $row->qtd;
+            $totais->total_duplicata = $row->total_duplicata;
+            $totais->qtd_duplicata = $row->qtd_duplicata;
         }
         return $totais;
     }
 
     function get_pendencias_por_vendedor($inicio, $fim){
-        $this->db->select('COALESCE(vendedores.descricao, "Sem vendedor") as vendedor, COUNT(DISTINCT pedidos.id) as total_pedidos, COUNT(contas_receber.id) as total_parcelas, SUM(contas_receber.valor) as total', false);
+        // Duplicata fica fora do total pendente por vendedor, assim como no card principal.
+        $this->db->select(
+            'COALESCE(vendedores.descricao, "Sem vendedor") as vendedor, ' .
+            'COUNT(DISTINCT pedidos.id) as total_pedidos, ' .
+            'SUM(CASE WHEN contas_receber.forma_pgto = 7 THEN 0 ELSE 1 END) as total_parcelas, ' .
+            'SUM(CASE WHEN contas_receber.forma_pgto = 7 THEN 0 ELSE contas_receber.valor END) as total, ' .
+            'SUM(CASE WHEN contas_receber.forma_pgto = 7 THEN 1 ELSE 0 END) as total_parcelas_duplicata, ' .
+            'SUM(CASE WHEN contas_receber.forma_pgto = 7 THEN contas_receber.valor ELSE 0 END) as total_duplicata',
+            false
+        );
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
         $this->db->join('vendedores', 'vendedores.id = pedidos.vendedores_id', 'left');

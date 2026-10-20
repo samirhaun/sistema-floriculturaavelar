@@ -80,7 +80,7 @@
                                         <i class="fa fa-arrow-up card-icon"></i>
                                         <div class="card-label">(A) Total a Receber por vencimento</div>
                                         <div class="card-value">R$ <?php echo number_format($card_total_a_receber, 2, ',', '.'); ?></div>
-                                        <div class="card-hint"><?php echo !empty($card_receitas_abertas) ? count($card_receitas_abertas) : 0; ?> parcelas abertas</div>
+                                        <div class="card-hint"><?php echo !empty($card_receitas_abertas_sem_duplicata) ? count($card_receitas_abertas_sem_duplicata) : 0; ?> parcelas abertas <span style="opacity:0.75;">(sem duplicata)</span></div>
                                     </div>
                                 </div>
                                 <div class="col-lg-4 col-md-6">
@@ -266,7 +266,7 @@
                                                     <td>Duplicata</td>
                                                     <td class="text-right">R$ <?php echo number_format($duplicata_vendido, 2, ',', '.'); ?></td>
                                                     <td class="text-right">R$ <?php echo number_format($duplicata_recebido, 2, ',', '.'); ?></td>
-                                                    <td class="text-right">R$ <?php echo number_format($card_duplicata_a_receber, 2, ',', '.'); ?></td>
+                                                    <td class="text-right">R$ <?php echo number_format($card_duplicata_a_receber, 2, ',', '.'); ?><br><small class="text-muted"><?php echo !empty($card_receitas_abertas_duplicata) ? count($card_receitas_abertas_duplicata) : 0; ?> parcelas</small></td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -701,6 +701,7 @@
             <div class="modal-body">
                 <p class="text-muted" style="font-size:12px;">
                     Este card sempre usa data de vencimento no periodo filtrado, mesmo quando a referencia do relatorio for pagamento.
+                    Duplicata (venda a prazo) fica de fora desta lista e deste total — veja o box "Duplicata" na aba Analítico.
                 </p>
                 <div class="table-responsive">
                     <table class="table table-condensed table-striped" style="font-size:12px;">
@@ -708,7 +709,7 @@
                             <tr><th>Pedido</th><th>Cliente</th><th>Vencimento</th><th>Forma Pgto</th><th>Vendedor</th><th class="text-right">Valor</th></tr>
                         </thead>
                         <tbody>
-                            <?php if(!empty($card_receitas_abertas)): foreach($card_receitas_abertas as $r): ?>
+                            <?php if(!empty($card_receitas_abertas_sem_duplicata)): foreach($card_receitas_abertas_sem_duplicata as $r): ?>
                             <tr>
                                 <td>#<?php echo $r->pedido_id; ?></td>
                                 <td><?php echo $r->cliente_pedido; ?></td>

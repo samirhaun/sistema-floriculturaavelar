@@ -11,6 +11,7 @@ class Site_pedidos extends TEC_Controller {
     $this->load->model('loja/clientes_model');
     $this->load->model('loja/maquininhas_cartao_model');
     $this->load->model('site/fotos_pedidos_model');
+    $this->load->model('site/bairros_frete_model');
     $this->load->helper('form');
     $this->load->helper('text');
 
@@ -489,6 +490,7 @@ function salvar_pedido(){
       'rua_entrega' => $this->input->post('rua_entrega'),
       'numero_entrega' => $this->input->post('numero_entrega'),
       'bairro_entrega' => $this->input->post('bairro_entrega'),
+      'bairros_frete_id' => $this->input->post('bairros_frete_id') ?: null,
       'cidade_entrega' => $this->input->post('cidade_entrega'),
       'estado_entrega' => $this->input->post('estado_entrega'),
       'complemento_entrega' => $this->input->post('complemento_entrega'),
@@ -884,7 +886,11 @@ public function editar_pedido()
 
     $cliente_selecionado = $this->produtos_model->get_cliente_resumo($dados['pedido']->clientes_id);
     $dados['clientes'] = (!empty($cliente_selecionado)) ? array($cliente_selecionado) : array();
-  
+
+    if(!empty($dados['pedido']->bairros_frete_id)){
+      $dados['bairro_frete_atual'] = $this->bairros_frete_model->get_bairro($dados['pedido']->bairros_frete_id);
+    }
+
     $dados['vendedores'] = $this->produtos_model->get_vendedores();
   
     $dados['eventos'] = $this->produtos_model->get_eventos();

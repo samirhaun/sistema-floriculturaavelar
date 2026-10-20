@@ -115,6 +115,25 @@ class Produtos_model extends CI_Model {
 
     }
 
+    // Lista pra tela de gerenciamento de produtos (Loja > Produtos). Filtra
+    // por status (ativos/inativos/todos) e já traz quantas vezes o produto
+    // foi vendido, pra destacar quem nunca vendeu como sugestão de limpeza.
+    public function get_produtos_lista($status = 'ativos')
+    {
+        $this->db->select("produtos.*, (SELECT COUNT(*) FROM pedido_produto pp WHERE pp.produtos_id = produtos.id) as total_vendas", false);
+        $this->db->from('produtos');
+
+        if ($status === 'ativos') {
+            $this->db->where('ativo', 1);
+        } elseif ($status === 'inativos') {
+            $this->db->where('ativo', 0);
+        }
+
+        $this->db->order_by('titulo', 'asc');
+        $query = $this->db->get();
+        return $query->num_rows() > 0 ? $query->result() : array();
+    }
+
     public function get_produtos($apenas_pedidos = null)
     {
         $this->db->select('produtos.*');
@@ -122,7 +141,11 @@ class Produtos_model extends CI_Model {
         $this->db->order_by('titulo asc');
 
         if(!empty($apenas_pedidos)):
+            // Produto desativado nunca pode ser vendido, mesmo que
+            // exibir_em_pedidos ainda esteja marcado como 1 -- os dois campos
+            // são independentes e o botão de desativar só mexe no 'ativo'.
             $this->db->where('exibir_em_pedidos', 1);
+            $this->db->where('ativo', 1);
         endif;
 
         $query = $this->db->get();
@@ -131,6 +154,59 @@ class Produtos_model extends CI_Model {
         }else{
             return FALSE;
         }
+    }
+
+    // Lista pra tela de custos: produto + categoria, só os ativos.
+    public function get_produtos_com_categoria()
+    {
+        $this->db->select('produtos.id, produtos.titulo, produtos.valor, produtos.valor_custo, categorias.nome as categoria');
+        $this->db->from('produtos');
+        $this->db->join('categorias', 'categorias.id = produtos.categorias_id', 'left');
+        $this->db->where('produtos.ativo', 1);
+        $this->db->order_by('produtos.titulo', 'asc');
+        $query = $this->db->get();
+        return $query->num_rows() > 0 ? $query->result() : array();
+    }
+
+    public function atualizar_custo($id, $valor_custo)
+    {
+        $this->db->where('id', $id);
+        return $this->db->update('produtos', array('valor_custo' => $valor_custo));
+    }
+
+    public function pendentes_classificacao_fiscal($ano)
+    {
+        $inicio = ((int) $ano).'-01-01';
+        $fim = (((int) $ano) + 1).'-01-01';
+        $this->db->select('produtos.id, produtos.titulo, produtos.grupo_fiscal_sugerido_id, produtos.grupo_fiscal_sugestao_confianca, produtos.grupo_fiscal_sugestao_origem, categorias.nome AS categoria, sugestao.nome AS grupo_sugerido, COUNT(pedido_produto.id) AS vendas, COALESCE(SUM(pedido_produto.quantidade), 0) AS unidades', false);
+        $this->db->from('produtos');
+        $this->db->join('pedido_produto', 'pedido_produto.produtos_id = produtos.id');
+        $this->db->join('pedidos', 'pedidos.id = pedido_produto.pedidos_id');
+        $this->db->join('categorias', 'categorias.id = produtos.categorias_id', 'left');
+        $this->db->join('grupos_fiscais_nfce sugestao', 'sugestao.id = produtos.grupo_fiscal_sugerido_id', 'left');
+        $this->db->where('pedidos.data_pedido >=', $inicio);
+        $this->db->where('pedidos.data_pedido <', $fim);
+        $this->db->where_not_in('pedidos.status_pedido', array(4, 5));
+        $this->db->where('produtos.grupos_fiscais_nfce_id IS NULL', null, false);
+        $this->db->group_start()->where('produtos.nfce_ncm IS NULL', null, false)->or_where('produtos.nfce_ncm', '')->group_end();
+        $this->db->group_by('produtos.id');
+        $this->db->order_by('unidades', 'DESC');
+        return $this->db->get()->result();
+    }
+
+    public function aprovar_grupos_fiscais(array $grupos)
+    {
+        $this->db->trans_start();
+        foreach ($grupos as $produto_id => $grupo_id) {
+            $this->db->where('id', (int) $produto_id)->update('produtos', array(
+                'grupos_fiscais_nfce_id' => (int) $grupo_id,
+                'grupo_fiscal_sugerido_id' => null,
+                'grupo_fiscal_sugestao_confianca' => null,
+                'grupo_fiscal_sugestao_origem' => null,
+            ));
+        }
+        $this->db->trans_complete();
+        return $this->db->trans_status();
     }
 
     public function get_produtos_vinculados($idproduto)
@@ -611,6 +687,8 @@ class Produtos_model extends CI_Model {
         $this->db->select('*');
         $this->db->from('produtos');
         $this->db->where('alerta_estoque_minimo >', 0);
+        // Produto desativado não deve pedir reposição -- já não é vendido.
+        $this->db->where('ativo', 1);
         $produtos = $this->db->get()->result();
 
         if(!empty($produtos)):
@@ -640,11 +718,16 @@ class Produtos_model extends CI_Model {
     }
 
 
-    function posicao_estoque()
+    function posicao_estoque($status = 'ativos')
     {
 
         $this->db->select('*');
         $this->db->from('produtos');
+        if ($status === 'ativos') {
+            $this->db->where('ativo', 1);
+        } elseif ($status === 'inativos') {
+            $this->db->where('ativo', 0);
+        }
         $this->db->order_by('titulo asc');
         $produtos = $this->db->get()->result();
 

@@ -115,6 +115,25 @@ class Produtos_model extends CI_Model {
 
     }
 
+    // Lista pra tela de gerenciamento de produtos (Loja > Produtos). Filtra
+    // por status (ativos/inativos/todos) e já traz quantas vezes o produto
+    // foi vendido, pra destacar quem nunca vendeu como sugestão de limpeza.
+    public function get_produtos_lista($status = 'ativos')
+    {
+        $this->db->select("produtos.*, (SELECT COUNT(*) FROM pedido_produto pp WHERE pp.produtos_id = produtos.id) as total_vendas", false);
+        $this->db->from('produtos');
+
+        if ($status === 'ativos') {
+            $this->db->where('ativo', 1);
+        } elseif ($status === 'inativos') {
+            $this->db->where('ativo', 0);
+        }
+
+        $this->db->order_by('titulo', 'asc');
+        $query = $this->db->get();
+        return $query->num_rows() > 0 ? $query->result() : array();
+    }
+
     public function get_produtos($apenas_pedidos = null)
     {
         $this->db->select('produtos.*');
@@ -122,7 +141,11 @@ class Produtos_model extends CI_Model {
         $this->db->order_by('titulo asc');
 
         if(!empty($apenas_pedidos)):
+            // Produto desativado nunca pode ser vendido, mesmo que
+            // exibir_em_pedidos ainda esteja marcado como 1 -- os dois campos
+            // são independentes e o botão de desativar só mexe no 'ativo'.
             $this->db->where('exibir_em_pedidos', 1);
+            $this->db->where('ativo', 1);
         endif;
 
         $query = $this->db->get();
@@ -131,6 +154,24 @@ class Produtos_model extends CI_Model {
         }else{
             return FALSE;
         }
+    }
+
+    // Lista pra tela de custos: produto + categoria, só os ativos.
+    public function get_produtos_com_categoria()
+    {
+        $this->db->select('produtos.id, produtos.titulo, produtos.valor, produtos.valor_custo, categorias.nome as categoria');
+        $this->db->from('produtos');
+        $this->db->join('categorias', 'categorias.id = produtos.categorias_id', 'left');
+        $this->db->where('produtos.ativo', 1);
+        $this->db->order_by('produtos.titulo', 'asc');
+        $query = $this->db->get();
+        return $query->num_rows() > 0 ? $query->result() : array();
+    }
+
+    public function atualizar_custo($id, $valor_custo)
+    {
+        $this->db->where('id', $id);
+        return $this->db->update('produtos', array('valor_custo' => $valor_custo));
     }
 
     public function get_produtos_vinculados($idproduto)
@@ -611,6 +652,8 @@ class Produtos_model extends CI_Model {
         $this->db->select('*');
         $this->db->from('produtos');
         $this->db->where('alerta_estoque_minimo >', 0);
+        // Produto desativado não deve pedir reposição -- já não é vendido.
+        $this->db->where('ativo', 1);
         $produtos = $this->db->get()->result();
 
         if(!empty($produtos)):
@@ -640,11 +683,16 @@ class Produtos_model extends CI_Model {
     }
 
 
-    function posicao_estoque()
+    function posicao_estoque($status = 'ativos')
     {
 
         $this->db->select('*');
         $this->db->from('produtos');
+        if ($status === 'ativos') {
+            $this->db->where('ativo', 1);
+        } elseif ($status === 'inativos') {
+            $this->db->where('ativo', 0);
+        }
         $this->db->order_by('titulo asc');
         $produtos = $this->db->get()->result();
 

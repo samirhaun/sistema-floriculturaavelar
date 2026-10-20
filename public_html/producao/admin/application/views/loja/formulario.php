@@ -94,6 +94,25 @@
                                     </select>
                                 </div> 
                             </div>
+
+                            <div class="col-sm-2 col-xs-12">
+                                <div class="form-group"><label class="control-label">Grupo fiscal NFC-e:</label><select name="grupos_fiscais_nfce_id" class="form-control"><option value="">Selecionar</option><?php foreach($grupos_fiscais_nfce as $grupo): ?><option value="<?php echo $grupo->id ?>" <?php echo isset($produto->grupos_fiscais_nfce_id) && (int)$produto->grupos_fiscais_nfce_id === (int)$grupo->id ? 'selected' : '' ?>><?php echo html_escape($grupo->nome) ?></option><?php endforeach ?></select></div>
+                            </div>
+                            <div class="col-sm-2 col-xs-12">
+                                <div class="form-group"><label class="control-label">NCM NFC-e:</label><input type="text" maxlength="8" name="nfce_ncm" class="form-control" value="<?php echo isset($produto->nfce_ncm) ? $produto->nfce_ncm : '' ?>"></div>
+                            </div>
+                            <div class="col-sm-2 col-xs-12">
+                                <div class="form-group"><label class="control-label">CSOSN:</label><input type="text" maxlength="4" name="nfce_csosn" class="form-control" value="<?php echo isset($produto->nfce_csosn) ? $produto->nfce_csosn : '102' ?>"></div>
+                            </div>
+                            <div class="col-sm-2 col-xs-12">
+                                <div class="form-group"><label class="control-label">CST PIS:</label><input type="text" maxlength="2" name="nfce_pis_cst" class="form-control" value="<?php echo isset($produto->nfce_pis_cst) ? $produto->nfce_pis_cst : '04' ?>"></div>
+                            </div>
+                            <div class="col-sm-2 col-xs-12">
+                                <div class="form-group"><label class="control-label">CST COFINS:</label><input type="text" maxlength="2" name="nfce_cofins_cst" class="form-control" value="<?php echo isset($produto->nfce_cofins_cst) ? $produto->nfce_cofins_cst : '04' ?>"></div>
+                            </div>
+                            <div class="col-sm-2 col-xs-12">
+                                <div class="form-group"><label class="control-label">CFOP:</label><input type="text" maxlength="4" name="nfce_cfop" class="form-control" value="<?php echo isset($produto->nfce_cfop) ? $produto->nfce_cfop : '5102' ?>"></div>
+                            </div>
                         </div>
                         <div class="hr-line-dashed"></div>
                         <div class="row">

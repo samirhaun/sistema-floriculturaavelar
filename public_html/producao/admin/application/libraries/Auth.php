@@ -13,6 +13,10 @@ class Auth {
 
     public function verifica_sessao()
     {
+        if (is_cli() && getenv('FISCAL_CLI_HOMOLOGACAO') === '1'
+            && $this->CI->router->class === 'Cli_nfce_homologacao') {
+            return;
+        }
         $_login_routes = array(
             'Admin/index',
             'Admin/login',

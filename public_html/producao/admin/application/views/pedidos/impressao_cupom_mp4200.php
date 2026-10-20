@@ -65,7 +65,7 @@
 
 	
 
-    <span> <strong>  CUPOM </strong></span>
+    <span> <strong>  CUPOM - PEDIDO Nº <?php echo (int) $pedido->id; ?> </strong></span>
 
 
 

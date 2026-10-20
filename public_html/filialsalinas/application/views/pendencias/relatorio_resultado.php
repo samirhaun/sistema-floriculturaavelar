@@ -61,6 +61,14 @@
                             </div>
                         </div>
                         <div class="col-lg-3 col-md-6">
+                            <div class="card-vendas" style="background: linear-gradient(135deg, #f0ad4e 0%, #f7b733 100%);">
+                                <i class="fa fa-file-text-o card-icon"></i>
+                                <div class="card-label">Duplicata pendente <small style="opacity:0.85;">(fora do total)</small></div>
+                                <div class="card-value">R$ <?php echo number_format($total_duplicata, 2, ',', '.'); ?></div>
+                                <div style="font-size:11px; opacity:0.9; margin-top:2px;"><?php echo number_format($qtd_parcelas_duplicata, 0, ',', '.'); ?> parcelas</div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
                             <div class="card-vendas" style="background: linear-gradient(135deg, #455a64 0%, #607d8b 100%);">
                                 <i class="fa fa-calendar card-icon"></i>
                                 <div class="card-label">Ticket médio</div>
@@ -68,6 +76,9 @@
                             </div>
                         </div>
                     </div>
+                    <p class="text-muted" style="font-size:11px; margin-top:-5px;">
+                        <i class="fa fa-info-circle"></i> "Total pendente" e "Parcelas pendentes" não incluem Duplicata (venda a prazo) — veja o card e a tabela "Duplicata" abaixo.
+                    </p>
 
                     <!-- VENDEDORES -->
                     <div class="row">
@@ -236,6 +247,53 @@
                                             <td colspan="3"><span class="badge badge-futuro">A vencer: R$ <?php echo number_format($total_futuro, 2, ',', '.'); ?></span></td>
                                         </tr>
                                     </tfoot>
+                                </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DUPLICATA (FORA DO TOTAL PENDENTE) -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="breakdown-box" style="background:#fff8e1; border:1px solid #f0ad4e;">
+                                <h5><i class="fa fa-file-text-o text-warning"></i> Duplicata em aberto <small class="text-muted">(fora do total pendente acima)</small></h5>
+                                <p class="text-muted" style="margin-top:-5px;">Venda a prazo: não representa dinheiro em caixa, por isso fica de fora do card e da tabela de pendências acima.</p>
+                                <div class="table-responsive">
+                                <table class="table table-condensed table-striped" style="font-size:12px;">
+                                    <thead><tr><th>Pedido</th><th>Data Pedido</th><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Atraso</th><th>Vendedor</th></tr></thead>
+                                    <tbody>
+                                        <?php if(!empty($pendencias_duplicata)): foreach($pendencias_duplicata as $p):
+                                            $cancelada_relatorio = !empty($p->cancelada_relatorio);
+                                            $dias = (strtotime($hoje) - strtotime($p->data_vencimento)) / 86400;
+                                            if($cancelada_relatorio) $badge = '<span class="badge badge-cancelada">Cancelada</span>';
+                                            elseif($dias > 0) $badge = '<span class="badge badge-vencido">'.floor($dias).'d</span>';
+                                            elseif($dias == 0) $badge = '<span class="badge badge-hoje">Hoje</span>';
+                                            else $badge = '<span class="badge badge-futuro">'.abs(floor($dias)).'d</span>';
+                                        ?>
+                                        <tr class="<?php echo $cancelada_relatorio ? 'linha-cancelada' : ''; ?>">
+                                            <td>#<?php echo $p->pedido_cod; ?></td>
+                                            <td><?php echo !empty($p->data_pedido) ? date('d/m/Y', strtotime($p->data_pedido)) : '-'; ?></td>
+                                            <td><?php echo $p->cliente; ?></td>
+                                            <td><?php echo date('d/m/Y', strtotime($p->data_vencimento)); ?></td>
+                                            <td>R$ <?php echo number_format($p->valor, 2, ',', '.'); ?><?php echo $cancelada_relatorio ? ' <span class="badge badge-cancelada">fora dos totais</span>' : ''; ?></td>
+                                            <td><?php echo $badge; ?></td>
+                                            <td><?php echo $p->vendedor; ?></td>
+                                        </tr>
+                                        <?php endforeach; else: ?>
+                                        <tr><td colspan="7" class="text-center text-muted">Nenhuma duplicata em aberto neste período</td></tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                    <?php if(!empty($pendencias_duplicata)): ?>
+                                    <tfoot>
+                                        <tr style="font-weight:700; border-top:2px solid #f0ad4e;">
+                                            <td>TOTAL DUPLICATA</td>
+                                            <td></td><td></td><td></td>
+                                            <td>R$ <?php echo number_format($total_duplicata, 2, ',', '.'); ?></td>
+                                            <td></td><td></td>
+                                        </tr>
+                                    </tfoot>
+                                    <?php endif; ?>
                                 </table>
                                 </div>
                             </div>

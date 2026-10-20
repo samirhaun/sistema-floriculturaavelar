@@ -31,8 +31,25 @@
                             Novo produto
                         </a>
                     </div>
+                    <ul class="nav nav-tabs" style="border-bottom:none; margin-top:10px;">
+                        <li class="<?php echo ($status_filtro == 'ativos') ? 'active' : '' ?>">
+                            <a href="<?php echo base_url(array('loja', 'produtos')) ?>?status=ativos">Ativos</a>
+                        </li>
+                        <li class="<?php echo ($status_filtro == 'inativos') ? 'active' : '' ?>">
+                            <a href="<?php echo base_url(array('loja', 'produtos')) ?>?status=inativos">Inativos</a>
+                        </li>
+                        <li class="<?php echo ($status_filtro == 'todos') ? 'active' : '' ?>">
+                            <a href="<?php echo base_url(array('loja', 'produtos')) ?>?status=todos">Todos</a>
+                        </li>
+                    </ul>
                 </div>
                 <div class="ibox-content">
+                    <?php if($status_filtro == 'ativos'): ?>
+                    <div class="alert alert-warning" style="margin-bottom:15px;">
+                        <i class="fa fa-exclamation-triangle"></i>
+                        Produtos com fundo amarelo nunca foram vendidos nenhuma vez -- candidatos a desativar pra limpar a lista.
+                    </div>
+                    <?php endif; ?>
                     <div class="table-responsive">
                         <table class="table table-striped table-bordered table-hover dataTables-view" >
                             <thead>
@@ -51,9 +68,9 @@
                                 if(!empty($produtos)){
                                     foreach($produtos as $produto){
                             ?>
-                                        <tr class="gradeC" id="item-<?php echo $produto->id ?>">
+                                        <tr class="gradeC" id="item-<?php echo $produto->id ?>" <?php echo ($produto->ativo == 1 && $produto->total_vendas == 0) ? 'style="background-color:#fcf8e3;"' : '' ?>>
                                             <td><?php echo $produto->id; ?></td>
-                                            <td><?php echo $produto->titulo; ?></td>
+                                            <td><?php echo $produto->titulo; ?> <?php echo ($produto->ativo == 1 && $produto->total_vendas == 0) ? '<span class="label label-warning">nunca vendido</span>' : '' ?></td>
                                             <td><?php echo $produto->descricao; ?></td>
                                             <td><?php echo $produto->valor; ?></td>
                                             <td><?php echo ($produto->ativo == 1)? 'Ativado': 'Desativado'; ?></td>
@@ -73,13 +90,13 @@
 
                                                 <?php if($produto->ativo == 1){ ?>
 
-                                                <a href="<?php echo base_url(array('loja', 'desativar-produto')) ?>?id=<?php echo $produto->id ?>" class="btn btn-default btn-icon-action" data-item="<?php echo $produto->id ?>" data-toggle="tooltip" data-placement="bottom" title="Desativar Produto"><i style="color: blue;" class="fa fa-minus-circle">
+                                                <a href="<?php echo base_url(array('loja', 'desativar-produto')) ?>?id=<?php echo $produto->id ?>" class="btn btn-default btn-icon-action confirma-toggle-ativo" data-item="<?php echo $produto->id ?>" data-produto="<?php echo htmlspecialchars($produto->titulo) ?>" data-acao="desativar" data-toggle="tooltip" data-placement="bottom" title="Desativar Produto"><i style="color: blue;" class="fa fa-minus-circle">
                                                 </i>
                                             </a>
 
                                                 <?php }else{ ?>
 
-                                                <a href="<?php echo base_url(array('loja', 'desativar-produto')) ?>?id=<?php echo $produto->id ?>" class="btn btn-default btn-icon-action" data-item="<?php echo $produto->id ?>" data-toggle="tooltip" data-placement="bottom" title="Ativar Produto"><i style="color: red;" class="fa fa-plus-circle"></i></a>
+                                                <a href="<?php echo base_url(array('loja', 'desativar-produto')) ?>?id=<?php echo $produto->id ?>" class="btn btn-default btn-icon-action confirma-toggle-ativo" data-item="<?php echo $produto->id ?>" data-produto="<?php echo htmlspecialchars($produto->titulo) ?>" data-acao="ativar" data-toggle="tooltip" data-placement="bottom" title="Ativar Produto"><i style="color: red;" class="fa fa-plus-circle"></i></a>
 
 
                                                 <?php } ?>
@@ -123,5 +140,33 @@
         <?php if (isset($notification)): ?>
             showNotification(<?php echo '"'. $notification->type .'","'. $notification->title .'","'. $notification->message .'"' ?>)
         <?php endif ?>
+
+        // Confirma antes de ativar/desativar -- o link agia direto no clique,
+        // sem aviso nenhum, fácil de acionar sem querer.
+        $('.confirma-toggle-ativo').click(function(e){
+            e.preventDefault();
+
+            var url = $(this).attr('href');
+            var produto = $(this).data('produto');
+            var vaiDesativar = $(this).data('acao') === 'desativar';
+
+            swal({
+                title: 'Atenção,',
+                text: (vaiDesativar
+                    ? 'Desativar "' + produto + '"? Ele deixa de aparecer pra venda.'
+                    : 'Ativar "' + produto + '" de novo?'),
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: vaiDesativar ? '#DD6B55' : '#1ab394',
+                confirmButtonText: vaiDesativar ? 'Sim, desativar' : 'Sim, ativar',
+                cancelButtonText: 'Cancelar',
+                closeOnConfirm: true,
+                closeOnCancel: true
+            }, function(isConfirm){
+                if(isConfirm){
+                    window.location.href = url;
+                }
+            });
+        });
     })
 </script>

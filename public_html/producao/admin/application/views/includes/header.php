@@ -182,6 +182,13 @@
                             
                             <?php if(check_habilidade('visualizar_pedidos')): ?>
                             <li id="loja-pedidos"><a href="<?php echo base_url(array('loja', 'pedidos')) ?>">Pedidos/Vendas</a></li>
+                            <li id="loja-notas-fiscais"><a href="<?php echo base_url(array('loja', 'notas-fiscais')) ?>">NFC-e emitidas</a></li>
+                            <li id="loja-sintegra"><a href="<?php echo base_url(array('loja', 'sintegra')) ?>">Arquivo SINTEGRA</a></li>
+                            <?php endif; ?>
+
+                            <?php if(check_habilidade('visualizar_produtos')): ?>
+                            <li id="loja-grupos-fiscais"><a href="<?php echo base_url(array('loja', 'grupos-fiscais')) ?>">Grupos fiscais NFC-e</a></li>
+                            <li id="loja-revisar-classificacao-fiscal"><a href="<?php echo base_url(array('loja', 'revisar-classificacao-fiscal')) ?>">Revisar classificação fiscal</a></li>
                             <?php endif; ?>
                             
                             <?php if(check_habilidade('visualizar_cupons')): ?>
@@ -233,6 +240,10 @@
 
                             <?php if(check_habilidade('visualizar_produtos')): ?>
                             <li id="Loja-produtos"><a href="<?php echo base_url(array('loja', 'produtos')) ?>">Produtos</a></li>
+                            <?php endif; ?>
+
+                            <?php if(check_habilidade('visualizar_produtos')): ?>
+                            <li id="Loja-produtos-custos"><a href="<?php echo base_url(array('loja', 'produtos-custos')) ?>">Custos</a></li>
                             <?php endif; ?>
 
                             <?php if(check_habilidade('visualizar_entrada_produtos')): ?>
@@ -289,7 +300,7 @@
                             <li id="Loja-categorias"><a href="<?php echo base_url(array('loja', 'categorias')) ?>">Categorias</a></li>
                             <?php endif; ?>
                             <?php if(check_habilidade('visualizar_fretes')): ?>
-                            <li id="lista-transparencia"><a href="<?php echo base_url(array('site/transparencia')) ?>">Fretes Bairro</a></li>
+                            <li id="lista-bairros-frete"><a href="<?php echo base_url(array('site/bairros-frete')) ?>">Fretes por Bairro</a></li>
                             <?php endif; ?>
                         </ul>
                     </li>

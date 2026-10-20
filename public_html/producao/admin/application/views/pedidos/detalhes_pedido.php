@@ -25,6 +25,16 @@
                 </div>
             </div>
 
+            <div class="col-lg-2">
+                <div class="title-action">
+                    <?php if(!empty($nota_fiscal) && $nota_fiscal->status === 'autorizada'): ?>
+                        <a href="<?php echo base_url('loja/nfce/imprimir?pedido='.$pedido_id) ?>" target="_blank" class="btn btn-success"><i class="fa fa-print"></i> Reimprimir NFC-e</a>
+                    <?php else: ?>
+                        <form method="post" action="<?php echo base_url('loja/nfce/emitir') ?>" target="_blank" style="display:inline"><input type="hidden" name="pedido_id" value="<?php echo (int) $pedido_id ?>"><button class="btn btn-success"><i class="fa fa-qrcode"></i> Emitir e imprimir NFC-e</button></form>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <?php if(!empty($pedido->bilhete)): ?>
 
                 <div class="col-lg-2">

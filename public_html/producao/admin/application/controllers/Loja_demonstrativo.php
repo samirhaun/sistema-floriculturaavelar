@@ -250,12 +250,16 @@ class Loja_demonstrativo extends TEC_Controller {
             }
             $card_total_a_receber = 0;
             $card_duplicata_a_receber = 0;
+            $card_receitas_abertas_sem_duplicata = array();
+            $card_receitas_abertas_duplicata = array();
             if(!empty($data['card_receitas_abertas'])){
                 foreach($data['card_receitas_abertas'] as $r){
                     if((int) $r->forma_pgto_receita === 7){
                         $card_duplicata_a_receber += (float) $r->valor_receita;
+                        $card_receitas_abertas_duplicata[] = $r;
                     } else {
                         $card_total_a_receber += (float) $r->valor_receita;
+                        $card_receitas_abertas_sem_duplicata[] = $r;
                     }
                 }
             }
@@ -264,6 +268,8 @@ class Loja_demonstrativo extends TEC_Controller {
             $data['card_duplicata_a_receber'] = $card_duplicata_a_receber;
             $data['card_duplicata_recebido'] = $card_duplicata_recebido;
             $data['card_duplicata_aberto'] = $card_duplicata_aberto;
+            $data['card_receitas_abertas_sem_duplicata'] = $card_receitas_abertas_sem_duplicata;
+            $data['card_receitas_abertas_duplicata'] = $card_receitas_abertas_duplicata;
 
             $total_desp_aberto = 0; $total_desp_pago = 0;
             foreach($contas_all as $c){
@@ -292,7 +298,6 @@ class Loja_demonstrativo extends TEC_Controller {
             $this->montaTela('pedidos/relatorio_novo',$data);
         }
     }
-
 
     function exportar_contas_pagar_novo(){
         $this->_exportar_lancamentos_novo(array('pagar'), 'contas-a-pagar');

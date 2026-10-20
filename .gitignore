@@ -1,0 +1,17 @@
+# dependencias e configs de ferramentas locais
+node_modules/
+.abacusai/
+.commandcode/
+
+# logs locais
+php-server.*.log
+
+# midia e dados da empresa/clientes (repositorio publico)
+*.mp4
+*.xlsx
+*.csv
+*.tsv
+*.tar.gz
+SINTEGRA_*.txt
+plans/fiscal/CUPONS_NFCE_*/
+plans/testes-focus/
