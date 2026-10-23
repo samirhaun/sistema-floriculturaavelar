@@ -49,6 +49,13 @@
         <div id="content-print" class="row">
             <div class="col-lg-12">
                 <div class="wrapper wrapper-content animated fadeInRight">
+                    <?php if(!empty($nota_fiscal) && in_array($nota_fiscal->status, array('erro', 'rejeitada')) && !empty($nota_fiscal->erro)): ?>
+                    <div class="alert alert-danger hidden-print">
+                        <strong>NFC-e não emitida<?php echo $nota_fiscal->status === 'rejeitada' ? ' (rejeitada pela SEFAZ)' : ''; ?>:</strong>
+                        <?php echo html_escape($nota_fiscal->erro); ?>
+                        <br><small>Última tentativa em <?php echo date('d/m/Y H:i', strtotime($nota_fiscal->updated_at)); ?>. Corrija o pedido/cliente e clique em "Emitir e imprimir NFC-e" de novo.</small>
+                    </div>
+                    <?php endif; ?>
                     <?php if($pedido): ?>
                     <div class="ibox-content p-xl">
                         <div class="row">
@@ -334,3 +341,9 @@
                 return true;
             });
         </script> -->
+
+<?php if(!empty($notification)): ?>
+<script>
+    $(function(){ showNotification(<?php echo json_encode($notification['type']) ?>, <?php echo json_encode($notification['title']) ?>, <?php echo json_encode($notification['message']) ?>); });
+</script>
+<?php endif; ?>

@@ -248,6 +248,16 @@ class Loja_pedidos extends TEC_Controller {
         $data['produtos'] = $this->pedidos_model->get_pedido_produtos($this->input->get('id'));
         $data['nota_fiscal'] = $this->notas_fiscais_model->buscar_por_pedido($this->input->get('id'));
 
+        // A emissao da NFC-e volta para esta tela com o motivo da falha na URL.
+        $data['notification'] = null;
+        if($this->input->get('type')){
+            $data['notification'] = array(
+                'type' => $this->input->get('type'),
+                'title' => $this->input->get('title'),
+                'message' => $this->input->get('message'),
+            );
+        }
+
         // echo '<pre>';
         // print_r($data['pedido']);
         // exit;

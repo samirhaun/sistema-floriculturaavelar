@@ -41,7 +41,8 @@ class Loja_notas_fiscais extends TEC_Controller {
                 redirect('loja/nfce/imprimir?pedido='.$pedido_id);
                 return;
             }
-            $mensagem = urlencode('A NFC-e nao foi autorizada. Consulte o relatorio fiscal.');
+            $motivo = ($nota && !empty($nota->erro)) ? $nota->erro : 'Consulte o relatorio fiscal.';
+            $mensagem = urlencode('A NFC-e nao foi autorizada: '.$motivo);
         } catch (Exception $e) {
             log_message('error', 'NFC-e pedido #'.$pedido_id.': '.$e->getMessage());
             $mensagem = urlencode($e->getMessage());
@@ -95,7 +96,14 @@ class Loja_notas_fiscais extends TEC_Controller {
         $mes = $this->mes_referencia();
         list($inicio, $fim) = $this->periodo($mes);
 
-        $data = array('mes' => $mes, 'conferencia' => null, 'erro' => null);
+        $data = array('mes' => $mes, 'conferencia' => null, 'erro' => null, 'notification' => null);
+        if ($this->input->get('type')) {
+            $data['notification'] = array(
+                'type' => $this->input->get('type'),
+                'title' => $this->input->get('title'),
+                'message' => $this->input->get('message'),
+            );
+        }
         $this->load->library('sintegra_service');
         try {
             $data['conferencia'] = $this->sintegra_service->conferencia($inicio, $fim);
@@ -127,6 +135,106 @@ class Loja_notas_fiscais extends TEC_Controller {
             ->set_header('Content-Disposition: attachment; filename="'.$nome.'"')
             ->set_header('Content-Length: '.strlen($conteudo))
             ->set_output($conteudo);
+    }
+
+    /**
+     * Importa XMLs de NF-e de fornecedor para os registros 50 de entrada.
+     * Nao movimenta estoque nem contas a pagar.
+     */
+    public function sintegra_importar_entradas()
+    {
+        $this->autorizar();
+        $mes = $this->mes_referencia_post();
+        $this->load->library('sintegra_service');
+        if (!$this->sintegra_model->entradas_disponiveis()) {
+            $this->voltar_sintegra($mes, 'error', 'Execute a migration 021 antes de importar notas de entrada.');
+            return;
+        }
+
+        $finalidade = (string) $this->input->post('finalidade');
+        $arquivos = array();
+        if (!empty($_FILES['xml_entradas']['name']) && is_array($_FILES['xml_entradas']['name'])) {
+            foreach ($_FILES['xml_entradas']['name'] as $i => $nome) {
+                if ($nome === '') continue;
+                $arquivos[] = array(
+                    'name' => $nome,
+                    'tmp_name' => $_FILES['xml_entradas']['tmp_name'][$i],
+                    'error' => $_FILES['xml_entradas']['error'][$i],
+                );
+            }
+        }
+        if (!$arquivos) {
+            $this->voltar_sintegra($mes, 'error', 'Selecione pelo menos um arquivo XML.');
+            return;
+        }
+
+        $importadas = 0;
+        $outro_mes = 0;
+        $avisos = array();
+        foreach ($arquivos as $arquivo) {
+            $nome = $arquivo['name'];
+            if ($arquivo['error'] !== UPLOAD_ERR_OK) { $avisos[] = $nome.': falha no envio.'; continue; }
+            if (strtolower(pathinfo($nome, PATHINFO_EXTENSION)) !== 'xml') { $avisos[] = $nome.': a extensao deve ser .xml.'; continue; }
+            $conteudo = file_get_contents($arquivo['tmp_name']);
+            if ($conteudo === false || strlen($conteudo) > 10 * 1024 * 1024) { $avisos[] = $nome.': arquivo ilegivel ou maior que 10 MB.'; continue; }
+
+            try {
+                $lido = $this->sintegra_service->ler_entrada_xml($conteudo, $finalidade);
+            } catch (RuntimeException $e) {
+                $avisos[] = $nome.': '.$e->getMessage();
+                continue;
+            }
+            $existente = $this->sintegra_model->entrada_por_chave($lido['nota']['chave_nfe']);
+            if ($existente) {
+                $avisos[] = $nome.': nota ja importada (entrada em '.date('d/m/Y', strtotime($existente->data_entrada)).').';
+                continue;
+            }
+            if (!$this->sintegra_model->inserir_entrada($lido['nota'], $lido['cfops'])) {
+                $avisos[] = $nome.': nao foi possivel salvar no banco.';
+                continue;
+            }
+            $importadas++;
+            if (substr($lido['nota']['data_entrada'], 0, 7) !== $mes) $outro_mes++;
+        }
+
+        $mensagem = $importadas.' nota(s) de entrada importada(s).';
+        if ($outro_mes) $mensagem .= ' '.$outro_mes.' delas tem entrada em outro mes e aparece(m) no SINTEGRA daquele mes.';
+        if ($avisos) $mensagem .= ' Nao importadas: '.implode(' | ', $avisos);
+        $this->voltar_sintegra($mes, $avisos ? 'warning' : 'success', $mensagem);
+    }
+
+    public function sintegra_entrada_xml()
+    {
+        $this->autorizar();
+        $this->load->model('loja/sintegra_model');
+        $entrada = $this->sintegra_model->entradas_disponiveis()
+            ? $this->sintegra_model->entrada_xml($this->input->get('id'))
+            : null;
+        if (!$entrada) show_error('Nota de entrada nao encontrada.', 404);
+        $this->output->set_content_type('application/xml; charset=utf-8')
+            ->set_header('Content-Disposition: attachment; filename="NFe_'.$entrada->chave_nfe.'.xml"')
+            ->set_output($entrada->xml_conteudo);
+    }
+
+    public function sintegra_excluir_entrada()
+    {
+        $this->autorizar();
+        $mes = $this->mes_referencia_post();
+        $this->load->model('loja/sintegra_model');
+        $ok = $this->sintegra_model->entradas_disponiveis()
+            && $this->sintegra_model->excluir_entrada($this->input->post('id'));
+        $this->voltar_sintegra($mes, $ok ? 'success' : 'error', $ok ? 'Nota de entrada removida do SINTEGRA.' : 'Nota de entrada nao encontrada.');
+    }
+
+    private function voltar_sintegra($mes, $tipo, $mensagem)
+    {
+        redirect('loja/sintegra?mes='.$mes.'&type='.$tipo.'&title=SINTEGRA&message='.urlencode($mensagem));
+    }
+
+    private function mes_referencia_post()
+    {
+        $mes = (string) $this->input->post('mes');
+        return preg_match('/^\d{4}-\d{2}$/', $mes) ? $mes : date('Y-m');
     }
 
     private function mes_referencia()
