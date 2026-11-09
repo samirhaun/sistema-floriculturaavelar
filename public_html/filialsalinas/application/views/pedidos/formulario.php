@@ -137,7 +137,21 @@
                           
                     <div class="col-sm-3 col-xs-4">
                         <div class="form-group">
-                            <label class="control-label">Nome cliente: *</label>
+                            <label class="control-label" id="label_doc_cliente_new">CPF ou CNPJ: </label>
+                            <input type="hidden" name="tipo_doc_cliente_new" value="cpf">
+                            <div class="input-group">
+                                <input type="text" name="cpf_cliente_new" class="form-control" value="" placeholder="Digite o CPF ou CNPJ">
+                                <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default" id="btn_buscar_cnpj" style="display:none;" title="Buscar dados do CNPJ"><i class="fa fa-search"></i> Buscar</button>
+                                </span>
+                            </div>
+                            <small id="status_cnpj_cliente_new" class="text-muted"></small>
+                        </div>
+                    </div>
+
+                    <div class="col-sm-3 col-xs-4">
+                        <div class="form-group">
+                            <label class="control-label" id="label_nome_cliente_new">Nome cliente: *</label>
                             <input type="text" name="nome_cliente_new" class="form-control" value="">
                         </div>
                     </div>
@@ -155,29 +169,6 @@
                             <input type="text" name="telefone_cliente_new" class="form-control" value="">
                         </div>
                     </div>
-                    <div class="col-sm-2 col-xs-4">
-                        <div class="form-group">
-                            <label class="control-label">Tipo: </label>
-                            <select name="tipo_doc_cliente_new" class="form-control">
-                                <option value="cpf">Pessoa física (CPF)</option>
-                                <option value="cnpj">Pessoa jurídica (CNPJ)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="col-sm-3 col-xs-4">
-                        <div class="form-group">
-                            <label class="control-label" id="label_doc_cliente_new">CPF cliente: </label>
-                            <div class="input-group">
-                                <input type="text" name="cpf_cliente_new" class="form-control" value="" >
-                                <span class="input-group-btn">
-                                    <button type="button" class="btn btn-default" id="btn_buscar_cnpj" style="display:none;" title="Buscar dados do CNPJ"><i class="fa fa-search"></i> Buscar</button>
-                                </span>
-                            </div>
-                            <small id="status_cnpj_cliente_new" class="text-muted"></small>
-                        </div>
-                    </div>
-
                     <div class="col-sm-3 col-xs-4">
                         <div class="form-group">
                             <label class="control-label">Data de nascimento cliente: </label>
@@ -1274,26 +1265,28 @@
 
 <script type="text/javascript">
 
-$('input[name="cpf_cliente_new"]').mask('000.000.000-00', {reverse: true});
 
   /* CPF / CNPJ NO CADASTRO RÁPIDO DE CLIENTE */
-  $('select[name="tipo_doc_cliente_new"]').on('change', function(){
-    var $doc = $('input[name="cpf_cliente_new"]');
-    $doc.unmask ? $doc.unmask() : null;
-    $doc.val('');
-    $('#status_cnpj_cliente_new').text('');
-    if($(this).val() == 'cnpj'){
-      $doc.mask('00.000.000/0000-00');
-      $('#label_doc_cliente_new').text('CNPJ cliente:');
-      $('#btn_buscar_cnpj, #endereco_cliente_new').show();
-      $('label:contains("Nome cliente")').first().text('Razão social: *');
-    } else {
-      $doc.mask('000.000.000-00', {reverse: true});
-      $('#label_doc_cliente_new').text('CPF cliente:');
-      $('#btn_buscar_cnpj, #endereco_cliente_new').hide();
-      $('label:contains("Razão social")').first().text('Nome cliente: *');
+  var $docNovo = $('input[name="cpf_cliente_new"]');
+  var docMaskOpts = {
+    onKeyPress: function(val, e, field, options){
+      field.mask(val.replace(/\D/g, '').length > 11 ? '00.000.000/0000-00' : '000.000.000-009', options);
+      atualiza_tipo_doc_cliente_new();
     }
-  });
+  };
+  $docNovo.mask('000.000.000-009', docMaskOpts);
+
+  function atualiza_tipo_doc_cliente_new(){
+    var digitos = $docNovo.val().replace(/\D/g, '');
+    var pj = digitos.length > 11;
+    var tipoAnterior = $('input[name="tipo_doc_cliente_new"]').val();
+    $('input[name="tipo_doc_cliente_new"]').val(pj ? 'cnpj' : 'cpf');
+    $('#label_doc_cliente_new').text(digitos.length == 0 ? 'CPF ou CNPJ:' : (pj ? 'CNPJ (pessoa jurídica):' : 'CPF (pessoa física):'));
+    $('#label_nome_cliente_new').text(pj ? 'Razão social: *' : 'Nome cliente: *');
+    $('#btn_buscar_cnpj, #endereco_cliente_new').toggle(pj);
+    if(tipoAnterior != (pj ? 'cnpj' : 'cpf')){ $('#status_cnpj_cliente_new').text(''); }
+  }
+  $docNovo.on('input change', atualiza_tipo_doc_cliente_new);
 
   function buscar_cnpj_cliente_new(){
     var cnpj = $('input[name="cpf_cliente_new"]').val().replace(/\D/g, '');
@@ -1324,7 +1317,7 @@ $('input[name="cpf_cliente_new"]').mask('000.000.000-00', {reverse: true});
   }
   $('#btn_buscar_cnpj').on('click', buscar_cnpj_cliente_new);
   $('input[name="cpf_cliente_new"]').on('blur', function(){
-    if($('select[name="tipo_doc_cliente_new"]').val() == 'cnpj' && $(this).val().replace(/\D/g, '').length == 14){ buscar_cnpj_cliente_new(); }
+    if($('input[name="tipo_doc_cliente_new"]').val() == 'cnpj' && $(this).val().replace(/\D/g, '').length == 14){ buscar_cnpj_cliente_new(); }
   });
   $('input[name="telefone_cliente_new"]').mask('(00) 00000-0000');
   $('input[name="nascimento_cliente_new"]').mask('00/00/0000');
