@@ -1268,13 +1268,17 @@
 
   /* CPF / CNPJ NO CADASTRO RÁPIDO DE CLIENTE */
   var $docNovo = $('input[name="cpf_cliente_new"]');
-  var docMaskOpts = {
-    onKeyPress: function(val, e, field, options){
-      field.mask(val.replace(/\D/g, '').length > 11 ? '00.000.000/0000-00' : '000.000.000-009', options);
-      atualiza_tipo_doc_cliente_new();
+  function formata_doc_cliente_new(d){
+    if(d.length <= 11){
+      return d.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2');
     }
-  };
-  $docNovo.mask('000.000.000-009', docMaskOpts);
+    return d.replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+  }
+  if($docNovo.unmask){ $docNovo.unmask(); }
+  $docNovo.attr('maxlength', 18).on('input', function(){
+    var d = this.value.replace(/\D/g, '').slice(0, 14);
+    this.value = formata_doc_cliente_new(d);
+  });
 
   function atualiza_tipo_doc_cliente_new(){
     var digitos = $docNovo.val().replace(/\D/g, '');
