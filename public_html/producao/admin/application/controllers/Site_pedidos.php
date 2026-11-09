@@ -450,6 +450,21 @@ function salvar_pedido(){
 
     $id_cliente = $this->clientes_model->salvar_cliente($dados, null);
 
+    if($id_cliente && $this->input->post('tipo_doc_cliente_new') == 'cnpj' && trim((string) $this->input->post('rua_cliente_new')) !== ''):
+      $this->clientes_model->salvar_enderecos_vinculados(array(array(
+        'ideditando' => 0,
+        'clientes_id' => $id_cliente,
+        'descricao' => 'Empresa',
+        'cep' => $this->input->post('cep_cliente_new'),
+        'rua' => $this->input->post('rua_cliente_new'),
+        'numero' => $this->input->post('numero_cliente_new'),
+        'complemento' => $this->input->post('complemento_cliente_new'),
+        'bairro' => $this->input->post('bairro_cliente_new'),
+        'cidade' => $this->input->post('cidade_cliente_new'),
+        'estado' => strtoupper((string) $this->input->post('estado_cliente_new')),
+      )));
+    endif;
+
     else:
 
       $id_cliente = $this->input->post('clientes_id');

@@ -155,10 +155,26 @@
                             <input type="text" name="telefone_cliente_new" class="form-control" value="">
                         </div>
                     </div>
+                    <div class="col-sm-2 col-xs-4">
+                        <div class="form-group">
+                            <label class="control-label">Tipo: </label>
+                            <select name="tipo_doc_cliente_new" class="form-control">
+                                <option value="cpf">Pessoa física (CPF)</option>
+                                <option value="cnpj">Pessoa jurídica (CNPJ)</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="col-sm-3 col-xs-4">
                         <div class="form-group">
-                            <label class="control-label">CPF cliente: </label>
-                            <input type="text" name="cpf_cliente_new" class="form-control" value="" >
+                            <label class="control-label" id="label_doc_cliente_new">CPF cliente: </label>
+                            <div class="input-group">
+                                <input type="text" name="cpf_cliente_new" class="form-control" value="" >
+                                <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default" id="btn_buscar_cnpj" style="display:none;" title="Buscar dados do CNPJ"><i class="fa fa-search"></i> Buscar</button>
+                                </span>
+                            </div>
+                            <small id="status_cnpj_cliente_new" class="text-muted"></small>
                         </div>
                     </div>
 
@@ -167,6 +183,17 @@
                             <label class="control-label">Data de nascimento cliente: </label>
                             <input type="text" name="nascimento_cliente_new" class="form-control" value="" >
                         </div>
+                    </div>
+
+                    <div id="endereco_cliente_new" style="display:none;">
+                        <div class="col-xs-12"><h5>Endereço da empresa</h5></div>
+                        <div class="col-sm-2 col-xs-4"><div class="form-group"><label class="control-label">CEP:</label><input type="text" name="cep_cliente_new" class="form-control" value=""></div></div>
+                        <div class="col-sm-4 col-xs-8"><div class="form-group"><label class="control-label">Rua:</label><input type="text" name="rua_cliente_new" class="form-control" value=""></div></div>
+                        <div class="col-sm-2 col-xs-4"><div class="form-group"><label class="control-label">Número:</label><input type="text" name="numero_cliente_new" class="form-control" value=""></div></div>
+                        <div class="col-sm-4 col-xs-8"><div class="form-group"><label class="control-label">Complemento:</label><input type="text" name="complemento_cliente_new" class="form-control" value=""></div></div>
+                        <div class="col-sm-4 col-xs-6"><div class="form-group"><label class="control-label">Bairro:</label><input type="text" name="bairro_cliente_new" class="form-control" value=""></div></div>
+                        <div class="col-sm-4 col-xs-6"><div class="form-group"><label class="control-label">Cidade:</label><input type="text" name="cidade_cliente_new" class="form-control" value=""></div></div>
+                        <div class="col-sm-2 col-xs-4"><div class="form-group"><label class="control-label">UF:</label><input type="text" name="estado_cliente_new" class="form-control" value="" maxlength="2"></div></div>
                     </div>
 
               </div>
@@ -1248,6 +1275,57 @@
 <script type="text/javascript">
 
 $('input[name="cpf_cliente_new"]').mask('000.000.000-00', {reverse: true});
+
+  /* CPF / CNPJ NO CADASTRO RÁPIDO DE CLIENTE */
+  $('select[name="tipo_doc_cliente_new"]').on('change', function(){
+    var $doc = $('input[name="cpf_cliente_new"]');
+    $doc.unmask ? $doc.unmask() : null;
+    $doc.val('');
+    $('#status_cnpj_cliente_new').text('');
+    if($(this).val() == 'cnpj'){
+      $doc.mask('00.000.000/0000-00');
+      $('#label_doc_cliente_new').text('CNPJ cliente:');
+      $('#btn_buscar_cnpj, #endereco_cliente_new').show();
+      $('label:contains("Nome cliente")').first().text('Razão social: *');
+    } else {
+      $doc.mask('000.000.000-00', {reverse: true});
+      $('#label_doc_cliente_new').text('CPF cliente:');
+      $('#btn_buscar_cnpj, #endereco_cliente_new').hide();
+      $('label:contains("Razão social")').first().text('Nome cliente: *');
+    }
+  });
+
+  function buscar_cnpj_cliente_new(){
+    var cnpj = $('input[name="cpf_cliente_new"]').val().replace(/\D/g, '');
+    var $st = $('#status_cnpj_cliente_new');
+    if(cnpj.length != 14){ $st.text('CNPJ incompleto.'); return; }
+    $st.removeClass('text-danger').addClass('text-muted').text('Buscando dados do CNPJ...');
+    $.getJSON('https://brasilapi.com.br/api/cnpj/v1/' + cnpj)
+      .done(function(d){
+        var set = function(n, v){ if(v){ $('input[name="' + n + '"]').val(v); } };
+        set('nome_cliente_new', d.razao_social);
+        set('email_cliente_new', d.email ? String(d.email).toLowerCase() : '');
+        var tel = (d.ddd_telefone_1 || '').replace(/\D/g, '');
+        if(tel){ var $tel = $('input[name="telefone_cliente_new"]'); $tel.val($tel.masked ? $tel.masked(tel) : tel); }
+        set('cep_cliente_new', d.cep ? String(d.cep).replace(/^(\d{5})(\d{3})$/, '$1-$2') : '');
+        set('rua_cliente_new', [d.descricao_tipo_de_logradouro, d.logradouro].filter(Boolean).join(' '));
+        set('numero_cliente_new', d.numero);
+        set('complemento_cliente_new', d.complemento);
+        set('bairro_cliente_new', d.bairro);
+        set('cidade_cliente_new', d.municipio);
+        set('estado_cliente_new', d.uf);
+        var sit = d.descricao_situacao_cadastral ? ' Situação: ' + d.descricao_situacao_cadastral + '.' : '';
+        $st.text((d.nome_fantasia ? 'Fantasia: ' + d.nome_fantasia + '.' : 'Dados carregados.') + sit);
+        if(d.descricao_situacao_cadastral && d.descricao_situacao_cadastral != 'ATIVA'){ $st.removeClass('text-muted').addClass('text-danger'); }
+      })
+      .fail(function(){
+        $st.removeClass('text-muted').addClass('text-danger').text('CNPJ não encontrado ou serviço indisponível. Preencha manualmente.');
+      });
+  }
+  $('#btn_buscar_cnpj').on('click', buscar_cnpj_cliente_new);
+  $('input[name="cpf_cliente_new"]').on('blur', function(){
+    if($('select[name="tipo_doc_cliente_new"]').val() == 'cnpj' && $(this).val().replace(/\D/g, '').length == 14){ buscar_cnpj_cliente_new(); }
+  });
   $('input[name="telefone_cliente_new"]').mask('(00) 00000-0000');
   $('input[name="nascimento_cliente_new"]').mask('00/00/0000');
 
