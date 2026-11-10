@@ -16,7 +16,12 @@ class Nfce_service {
         $this->CI->load->library('focus_nfe');
     }
 
-    public function emitir_pedido($pedido_id)
+    /**
+     * $como_retirada: venda com entrega cujo cliente nao quis se identificar.
+     * Emite como venda presencial (sem grupo de entrega). So deve ser usado por
+     * quem tem a habilidade emitir_nfce_entrega_como_retirada.
+     */
+    public function emitir_pedido($pedido_id, $como_retirada = false, $usuario_id = null)
     {
         $pedido_id = (int) $pedido_id;
         if (!$pedido_id) throw new RuntimeException('Pedido nao informado.');
@@ -33,7 +38,7 @@ class Nfce_service {
         $nota = $this->CI->notas_fiscais_model->buscar_por_pedido($pedido_id);
 
         try {
-            list($payload, $itens, $pagamentos, $totais) = $this->montar_payload($pedido_id);
+            list($payload, $itens, $pagamentos, $totais) = $this->montar_payload($pedido_id, $como_retirada);
             $this->CI->notas_fiscais_model->salvar_detalhes($nota_id, $pagamentos, $itens);
             $this->CI->notas_fiscais_model->atualizar($nota_id, array(
                 'status' => 'enviando',
@@ -44,6 +49,7 @@ class Nfce_service {
                 'valor_desconto' => $totais['desconto'],
                 'valor_total' => $totais['total'],
                 'erro' => null,
+                'emitida_como_retirada_por' => $como_retirada ? $usuario_id : null,
             ));
             $resposta = $this->CI->focus_nfe->emitir_nfce($nota->referencia, $payload);
             $corpo = $resposta['resposta'];
@@ -72,7 +78,7 @@ class Nfce_service {
         return $this->CI->notas_fiscais_model->buscar_por_pedido($pedido_id);
     }
 
-    private function montar_payload($pedido_id)
+    private function montar_payload($pedido_id, $como_retirada = false)
     {
         $pedido = $this->CI->db->select('pedidos.*, clientes.nome AS cliente_nome, clientes.cpf AS cliente_cpf')
             ->from('pedidos')->join('clientes', 'clientes.id = pedidos.clientes_id', 'left')
@@ -201,8 +207,10 @@ class Nfce_service {
                 // Excecao exclusiva do utilitario descartavel de homologacao:
                 // emite como consumidor nao identificado, sem declarar o grupo
                 // de entrega. A configuracao nunca existe no fluxo web normal.
-                if (($this->fiscal['ambiente'] ?? null) === 'homologacao'
-                    && !empty($this->fiscal['homologacao_consumidor_nao_identificado'])) {
+                // Tambem usado quando um gerente autoriza emitir a venda com
+                // entrega como retirada porque o cliente nao quis se identificar.
+                if ($como_retirada || (($this->fiscal['ambiente'] ?? null) === 'homologacao'
+                    && !empty($this->fiscal['homologacao_consumidor_nao_identificado']))) {
                     $payload['presenca_comprador'] = '1';
                     return array($payload, $itens_registro, $pagamentos_registro,
                         array('produtos' => $total_itens, 'frete' => $valor_frete,

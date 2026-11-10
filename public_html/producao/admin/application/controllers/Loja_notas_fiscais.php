@@ -36,7 +36,15 @@ class Loja_notas_fiscais extends TEC_Controller {
         if (!$pedido_id) show_error('Pedido nao informado.', 400);
         $this->load->library('nfce_service');
         try {
-            $nota = $this->nfce_service->emitir_pedido($pedido_id);
+            $como_retirada = $this->input->post('como_retirada') === '1';
+            if ($como_retirada && !check_habilidade('emitir_nfce_entrega_como_retirada')) {
+                throw new RuntimeException('Somente gerente pode emitir venda com entrega como retirada.');
+            }
+            $usuario_id = (int) $this->session->userdata('usuario')->id;
+            $nota = $this->nfce_service->emitir_pedido($pedido_id, $como_retirada, $usuario_id);
+            if ($como_retirada) {
+                log_message('info', 'NFC-e pedido #'.$pedido_id.' emitida como retirada pelo usuario #'.$usuario_id);
+            }
             if ($nota && $nota->status === 'autorizada') {
                 redirect('loja/nfce/imprimir?pedido='.$pedido_id);
                 return;
