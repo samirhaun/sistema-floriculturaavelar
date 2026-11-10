@@ -421,6 +421,20 @@ function salvar_pedido(){
     }
 
 
+    /* FRETE COBRADO EXIGE ENDERECO DE ENTREGA */
+    $frete_informado = (float) str_replace(',', '.', (string) $this->input->post('valor_frete'));
+    $numero_informado = trim((string) $this->input->post('numero_entrega'));
+    if ($frete_informado > 0 && (trim((string) $this->input->post('rua_entrega')) === ''
+        || $numero_informado === '' || $numero_informado === '0'
+        || trim((string) $this->input->post('bairro_entrega')) === '')) {
+      $msg = urlencode('Pedido com frete precisa de rua, numero e bairro de entrega. Se for retirada, zere o frete.');
+      if ($this->input->post('id')) {
+        redirect('site/editar-pedido?id=' . $this->input->post('id') . '&type=error&title=Endereco+de+entrega&message=' . $msg);
+      } else {
+        redirect('site/novo-pedido?type=error&title=Endereco+de+entrega&message=' . $msg);
+      }
+    }
+
     /* SALVANDO NOVO CLIENTE CASO TENHA */
     if($this->input->post('clientes_id') == 'novo'):
 

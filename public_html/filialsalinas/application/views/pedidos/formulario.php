@@ -2799,9 +2799,31 @@ $('.data_mask').datepicker({
       });
 
 
+      // Frete cobrado exige endereco completo: sem ele a entrega fica sem
+      // destino e a NFC-e sai como venda de balcao.
+      function endereco_frete_ok()
+      {
+        var frete = parseFloat(String($('[name="valor_frete"]').val() || '0').replace(',', '.')) || 0;
+        if (frete <= 0) return true;
+        var faltando = [];
+        if (!$.trim($('[name="rua_entrega"]').val())) faltando.push('rua');
+        var numero = $.trim($('[name="numero_entrega"]').val());
+        if (!numero || numero === '0') faltando.push('número (use S/N se não tiver)');
+        if (!$.trim($('[name="bairro_entrega"]').val())) faltando.push('bairro');
+        if (faltando.length) {
+          alert('Este pedido tem frete. Preencha o endereço de entrega: ' + faltando.join(', ') + '.\nSe for retirada na loja, zere o frete.');
+          $('[name="rua_entrega"]').focus();
+          return false;
+        }
+        return true;
+      }
+
       function salva_form()
       {
         if (window.pedidoEnvioEmAndamento) {
+          return false;
+        }
+        if (!endereco_frete_ok()) {
           return false;
         }
         
@@ -2855,6 +2877,9 @@ $('.data_mask').datepicker({
       function trava_submit_pedido()
       {
         if (window.pedidoEnvioEmAndamento) {
+          return false;
+        }
+        if (!endereco_frete_ok()) {
           return false;
         }
 
