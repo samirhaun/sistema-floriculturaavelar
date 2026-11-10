@@ -54,7 +54,7 @@
                         <strong>NFC-e não emitida<?php echo $nota_fiscal->status === 'rejeitada' ? ' (rejeitada pela SEFAZ)' : ''; ?>:</strong>
                         <?php echo html_escape($nota_fiscal->erro); ?>
                         <br><small>Última tentativa em <?php echo date('d/m/Y H:i', strtotime($nota_fiscal->updated_at)); ?>. Corrija o pedido/cliente e clique em "Emitir e imprimir NFC-e" de novo.</small>
-                        <?php if(strpos($nota_fiscal->erro, 'Entrega em domicilio exige CPF') === 0 && check_habilidade('emitir_nfce_entrega_como_retirada')): ?>
+                        <?php if((strpos($nota_fiscal->erro, 'Entrega em domicilio exige CPF') === 0 || strpos($nota_fiscal->erro, 'com Frete') !== false) && check_habilidade('emitir_nfce_entrega_como_retirada')): ?>
                         <form method="post" action="<?php echo base_url('loja/nfce/emitir') ?>" target="_blank" style="margin-top:8px" onsubmit="return confirm('O cliente não quis se identificar. Emitir a NFC-e deste pedido como RETIRADA (sem entrega e sem CPF)?');">
                             <input type="hidden" name="pedido_id" value="<?php echo (int) $pedido_id ?>">
                             <input type="hidden" name="como_retirada" value="1">

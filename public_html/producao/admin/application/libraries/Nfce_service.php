@@ -212,8 +212,26 @@ class Nfce_service {
                 if ($como_retirada || (($this->fiscal['ambiente'] ?? null) === 'homologacao'
                     && !empty($this->fiscal['homologacao_consumidor_nao_identificado']))) {
                     $payload['presenca_comprador'] = '1';
+                    // NFC-e presencial nao aceita frete destacado (rejeicao
+                    // "DANFE Simplificado ... com Frete"): o frete entra no
+                    // valor de cada item e o total pago continua batendo.
+                    if ($valor_frete > 0) {
+                        $payload['modalidade_frete'] = '9';
+                        foreach ($payload['items'] as $i => $item) {
+                            $frete_item = $rateio_frete[$i];
+                            unset($payload['items'][$i]['valor_frete']);
+                            if ($frete_item <= 0) continue;
+                            $bruto = round($linhas[$i]['total'] + $frete_item, 2);
+                            $unitario = round($bruto / $linhas[$i]['quantidade'], 10);
+                            $payload['items'][$i]['valor_bruto'] = number_format($bruto, 2, '.', '');
+                            $payload['items'][$i]['valor_unitario_comercial'] = number_format($unitario, 10, '.', '');
+                            $itens_registro[$i]['valor_total'] = $bruto;
+                            $itens_registro[$i]['valor_unitario'] = $unitario;
+                            $itens_registro[$i]['valor_frete'] = 0;
+                        }
+                    }
                     return array($payload, $itens_registro, $pagamentos_registro,
-                        array('produtos' => $total_itens, 'frete' => $valor_frete,
+                        array('produtos' => round($total_itens + $valor_frete, 2), 'frete' => 0.0,
                             'desconto' => $valor_desconto, 'total' => $total_documento));
                 }
                 throw new RuntimeException('Entrega em domicilio exige CPF ou CNPJ do cliente na NFC-e. Cadastre o documento do cliente antes de emitir.');
