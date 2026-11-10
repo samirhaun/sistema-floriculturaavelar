@@ -212,24 +212,7 @@ class Nfce_service {
                 if ($como_retirada || (($this->fiscal['ambiente'] ?? null) === 'homologacao'
                     && !empty($this->fiscal['homologacao_consumidor_nao_identificado']))) {
                     $payload['presenca_comprador'] = '1';
-                    // NFC-e presencial nao aceita frete destacado (rejeicao
-                    // "DANFE Simplificado ... com Frete"): o frete entra no
-                    // valor de cada item e o total pago continua batendo.
-                    if ($valor_frete > 0) {
-                        $payload['modalidade_frete'] = '9';
-                        foreach ($payload['items'] as $i => $item) {
-                            $frete_item = $rateio_frete[$i];
-                            unset($payload['items'][$i]['valor_frete']);
-                            if ($frete_item <= 0) continue;
-                            $bruto = round($linhas[$i]['total'] + $frete_item, 2);
-                            $unitario = round($bruto / $linhas[$i]['quantidade'], 10);
-                            $payload['items'][$i]['valor_bruto'] = number_format($bruto, 2, '.', '');
-                            $payload['items'][$i]['valor_unitario_comercial'] = number_format($unitario, 10, '.', '');
-                            $itens_registro[$i]['valor_total'] = $bruto;
-                            $itens_registro[$i]['valor_unitario'] = $unitario;
-                            $itens_registro[$i]['valor_frete'] = 0;
-                        }
-                    }
+                    $this->embutir_frete_nos_itens($payload, $itens_registro, $linhas, $rateio_frete);
                     return array($payload, $itens_registro, $pagamentos_registro,
                         array('produtos' => round($total_itens + $valor_frete, 2), 'frete' => 0.0,
                             'desconto' => $valor_desconto, 'total' => $total_documento));
@@ -240,9 +223,39 @@ class Nfce_service {
             $payload = array_merge($payload, $this->transportador_proprio());
         }
 
+        if (!$tem_entrega && $valor_frete > 0) {
+            // Venda sem endereco de entrega mas com frete cobrado.
+            $this->embutir_frete_nos_itens($payload, $itens_registro, $linhas, $rateio_frete);
+            return array($payload, $itens_registro, $pagamentos_registro,
+                array('produtos' => round($total_itens + $valor_frete, 2), 'frete' => 0.0,
+                    'desconto' => $valor_desconto, 'total' => $total_documento));
+        }
+
         $totais = array('produtos' => $total_itens, 'frete' => $valor_frete,
             'desconto' => $valor_desconto, 'total' => $total_documento);
         return array($payload, $itens_registro, $pagamentos_registro, $totais);
+    }
+
+    /**
+     * NFC-e presencial (sem grupo de entrega) nao aceita frete destacado: a
+     * SEFAZ rejeita com "DANFE Simplificado Tipo 2 (tpImp=6) com Frete". O
+     * frete passa a compor o valor de cada item e o total pago continua igual.
+     */
+    private function embutir_frete_nos_itens(array &$payload, array &$itens_registro, array $linhas, array $rateio_frete)
+    {
+        $payload['modalidade_frete'] = '9';
+        foreach ($payload['items'] as $i => $item) {
+            unset($payload['items'][$i]['valor_frete']);
+            $frete_item = $rateio_frete[$i];
+            if ($frete_item <= 0) continue;
+            $bruto = round($linhas[$i]['total'] + $frete_item, 2);
+            $unitario = round($bruto / $linhas[$i]['quantidade'], 10);
+            $payload['items'][$i]['valor_bruto'] = number_format($bruto, 2, '.', '');
+            $payload['items'][$i]['valor_unitario_comercial'] = number_format($unitario, 10, '.', '');
+            $itens_registro[$i]['valor_total'] = $bruto;
+            $itens_registro[$i]['valor_unitario'] = $unitario;
+            $itens_registro[$i]['valor_frete'] = 0;
+        }
     }
 
     /**
