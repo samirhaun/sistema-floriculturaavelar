@@ -21,19 +21,23 @@ class Nfce_service {
      * Emite como venda presencial (sem grupo de entrega). So deve ser usado por
      * quem tem a habilidade emitir_nfce_entrega_como_retirada.
      */
-    public function emitir_pedido($pedido_id, $como_retirada = false, $usuario_id = null)
+    /**
+     * $permitir_dinheiro: emissao manual (botao do pedido). A emissao automatica
+     * no fechamento da venda continua so para vendas com pagamento nao-dinheiro.
+     */
+    public function emitir_pedido($pedido_id, $como_retirada = false, $usuario_id = null, $permitir_dinheiro = false)
     {
         $pedido_id = (int) $pedido_id;
         if (!$pedido_id) throw new RuntimeException('Pedido nao informado.');
         if (empty($this->fiscal['enabled'])) throw new RuntimeException('Emissao fiscal esta desabilitada.');
         if (($this->fiscal['documento_padrao'] ?? null) !== 'nfce') throw new RuntimeException('Documento fiscal configurado nao e NFC-e.');
-        if (!$this->CI->notas_fiscais_model->pedido_pronto_para_emitir($pedido_id)) {
-            throw new RuntimeException('A NFC-e so pode ser emitida apos a confirmacao de todas as parcelas.');
+        if (!$this->CI->notas_fiscais_model->pedido_pronto_para_emitir($pedido_id, $permitir_dinheiro)) {
+            throw new RuntimeException($permitir_dinheiro ? 'A NFC-e so pode ser emitida apos a confirmacao de todas as parcelas.' : 'A NFC-e automatica exige parcelas pagas e um pagamento que nao seja dinheiro. Para venda em dinheiro, emita pelo botao do pedido.');
         }
 
         $nota = $this->CI->notas_fiscais_model->buscar_por_pedido($pedido_id);
         if ($nota && $nota->status === 'autorizada') return $nota;
-        $nota_id = $nota ? (int) $nota->id : $this->CI->notas_fiscais_model->criar_pendente($pedido_id, $this->fiscal['ambiente']);
+        $nota_id = $nota ? (int) $nota->id : $this->CI->notas_fiscais_model->criar_pendente($pedido_id, $this->fiscal['ambiente'], $permitir_dinheiro);
         if (!$nota_id) throw new RuntimeException('Nao foi possivel criar a pendencia fiscal do pedido.');
         $nota = $this->CI->notas_fiscais_model->buscar_por_pedido($pedido_id);
 

@@ -41,7 +41,7 @@ class Loja_notas_fiscais extends TEC_Controller {
                 throw new RuntimeException('Somente gerente pode emitir venda com entrega como retirada.');
             }
             $usuario_id = (int) $this->session->userdata('usuario')->id;
-            $nota = $this->nfce_service->emitir_pedido($pedido_id, $como_retirada, $usuario_id);
+            $nota = $this->nfce_service->emitir_pedido($pedido_id, $como_retirada, $usuario_id, true);
             if ($como_retirada) {
                 log_message('info', 'NFC-e pedido #'.$pedido_id.' emitida como retirada pelo usuario #'.$usuario_id);
             }

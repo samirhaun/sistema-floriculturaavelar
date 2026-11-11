@@ -10,7 +10,8 @@ class Notas_fiscais_model extends CI_Model {
      * dinheiro. O documento fiscal, quando emitido, representa o pedido
      * inteiro; as parcelas sao preservadas na tabela de pagamentos.
      */
-    public function pedido_elegivel($pedido_id)
+    /** $permitir_dinheiro: emissao manual pedida pelo cliente em venda so em dinheiro. */
+    public function pedido_elegivel($pedido_id, $permitir_dinheiro = false)
     {
         $contas = $this->db->select('id, forma_pgto, valor')
             ->from('contas_receber')
@@ -18,7 +19,7 @@ class Notas_fiscais_model extends CI_Model {
             ->get()->result();
 
         foreach ($contas as $conta) {
-            if (in_array((int) $conta->forma_pgto, $this->formas_nao_dinheiro, true)
+            if (($permitir_dinheiro || in_array((int) $conta->forma_pgto, $this->formas_nao_dinheiro, true))
                 && (float) $conta->valor > 0) {
                 return true;
             }
@@ -27,7 +28,7 @@ class Notas_fiscais_model extends CI_Model {
         return false;
     }
 
-    public function pedido_pronto_para_emitir($pedido_id)
+    public function pedido_pronto_para_emitir($pedido_id, $permitir_dinheiro = false)
     {
         $contas = $this->db->select('forma_pgto, valor, status')
             ->from('contas_receber')->where('pedidos_id', (int) $pedido_id)
@@ -44,13 +45,13 @@ class Notas_fiscais_model extends CI_Model {
                 $tem_pagamento_nao_dinheiro = true;
             }
         }
-        return $tem_pagamento_nao_dinheiro;
+        return $permitir_dinheiro || $tem_pagamento_nao_dinheiro;
     }
 
-    public function criar_pendente($pedido_id, $ambiente)
+    public function criar_pendente($pedido_id, $ambiente, $permitir_dinheiro = false)
     {
         $pedido_id = (int) $pedido_id;
-        if (!$this->pedido_elegivel($pedido_id)) {
+        if (!$this->pedido_elegivel($pedido_id, $permitir_dinheiro)) {
             return false;
         }
 
