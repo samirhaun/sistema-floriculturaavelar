@@ -66,7 +66,7 @@ class Nfce_service {
                 'xml_url' => $corpo['caminho_xml_nota_fiscal'] ?? null,
                 'danfe_url' => $corpo['caminho_danfe'] ?? null,
                 'resposta_json' => json_encode($corpo, JSON_UNESCAPED_UNICODE),
-                'erro' => $autorizada ? null : ($corpo['mensagem_sefaz'] ?? 'NFC-e rejeitada pela Focus/SEFAZ.'),
+                'erro' => $autorizada ? null : $this->mensagem_erro_focus($corpo),
                 'autorizada_em' => $autorizada ? date('Y-m-d H:i:s') : null,
             );
             $this->CI->notas_fiscais_model->atualizar($nota_id, $dados);
@@ -94,7 +94,7 @@ class Nfce_service {
         // A NFC-e (modelo 65) so vale para operacao interna. Entrega em outra UF
         // exige NF-e modelo 55, entao a emissao para antes de tomar rejeicao.
         $uf_emitente = strtoupper((string) $this->estabelecimento('uf'));
-        $uf_entrega = strtoupper(trim((string) $pedido->estado_entrega));
+        $uf_entrega = $this->normalizar_uf($pedido->estado_entrega);
         $tem_entrega = trim((string) $pedido->rua_entrega) !== '';
         if ($uf_entrega !== '' && $uf_entrega !== $uf_emitente) {
             throw new RuntimeException('A NFC-e so vale para operacao dentro de '.$uf_emitente
@@ -308,15 +308,17 @@ class Nfce_service {
         }
 
         $endereco = array(
-            'logradouro_destinatario' => $logradouro,
-            'numero_destinatario' => trim((string) $pedido->numero_entrega) ?: 'S/N',
-            'bairro_destinatario' => $bairro,
+            // Limites do schema da NF-e: logradouro/complemento 60, numero 60,
+            // bairro 60. Texto maior derruba a nota inteira na validacao.
+            'logradouro_destinatario' => $this->limitar($logradouro, 60),
+            'numero_destinatario' => $this->limitar(trim((string) $pedido->numero_entrega) ?: 'S/N', 60),
+            'bairro_destinatario' => $this->limitar($bairro, 60),
             'municipio_destinatario' => $municipio,
             'codigo_municipio_destinatario' => $this->codigo_municipio($municipio),
             'uf_destinatario' => $uf_emitente,
         );
         $complemento = trim((string) $pedido->complemento_entrega);
-        if ($complemento !== '') $endereco['complemento_destinatario'] = $complemento;
+        if ($complemento !== '') $endereco['complemento_destinatario'] = $this->limitar($complemento, 60);
         $cep = preg_replace('/\D/', '', (string) $pedido->cep_entrega);
         if (strlen($cep) === 8) $endereco['cep_destinatario'] = $cep;
 
@@ -411,8 +413,49 @@ class Nfce_service {
 
     private function forma_pagamento_focus($forma)
     {
-        $mapa = array(1 => '01', 2 => '04', 3 => '03', 4 => '03', 5 => '03', 6 => '03', 7 => '14', 8 => '02', 9 => '17');
+        // Duplicata (7) vai como 05 Credito Loja: a SEFAZ rejeita tPag 14 na NFC-e (857).
+        $mapa = array(1 => '01', 2 => '04', 3 => '03', 4 => '03', 5 => '03', 6 => '03', 7 => '05', 8 => '02', 9 => '17');
         if (!isset($mapa[$forma])) throw new RuntimeException('Forma de pagamento sem mapeamento fiscal.');
         return $mapa[$forma];
+    }
+
+    private function limitar($texto, $max)
+    {
+        $texto = trim((string) $texto);
+        return function_exists('mb_substr') ? trim(mb_substr($texto, 0, $max, 'UTF-8')) : trim(substr($texto, 0, $max));
+    }
+
+    /** Aceita "MG", "mg", "Minas Gerais", "minas gerais"... e devolve a sigla. */
+    private function normalizar_uf($uf)
+    {
+        $uf = trim((string) $uf);
+        if ($uf === '') return '';
+        $sem_acento = strtr($uf, array('á'=>'a','à'=>'a','â'=>'a','ã'=>'a','é'=>'e','ê'=>'e','í'=>'i','ó'=>'o','ô'=>'o','õ'=>'o','ú'=>'u','ç'=>'c',
+            'Á'=>'A','À'=>'A','Â'=>'A','Ã'=>'A','É'=>'E','Ê'=>'E','Í'=>'I','Ó'=>'O','Ô'=>'O','Õ'=>'O','Ú'=>'U','Ç'=>'C'));
+        $chave = strtoupper(preg_replace('/[^a-z ]/i', '', $sem_acento));
+        $chave = preg_replace('/\s+/', ' ', trim($chave));
+        if (strlen($chave) === 2) return $chave;
+        $nomes = array('ACRE' => 'AC', 'ALAGOAS' => 'AL', 'AMAPA' => 'AP', 'AMAZONAS' => 'AM', 'BAHIA' => 'BA',
+            'CEARA' => 'CE', 'DISTRITO FEDERAL' => 'DF', 'ESPIRITO SANTO' => 'ES', 'GOIAS' => 'GO',
+            'MARANHAO' => 'MA', 'MATO GROSSO' => 'MT', 'MATO GROSSO DO SUL' => 'MS', 'MINAS GERAIS' => 'MG',
+            'PARA' => 'PA', 'PARAIBA' => 'PB', 'PARANA' => 'PR', 'PERNAMBUCO' => 'PE', 'PIAUI' => 'PI',
+            'RIO DE JANEIRO' => 'RJ', 'RIO GRANDE DO NORTE' => 'RN', 'RIO GRANDE DO SUL' => 'RS',
+            'RONDONIA' => 'RO', 'RORAIMA' => 'RR', 'SANTA CATARINA' => 'SC', 'SAO PAULO' => 'SP',
+            'SERGIPE' => 'SE', 'TOCANTINS' => 'TO');
+        return isset($nomes[$chave]) ? $nomes[$chave] : $chave;
+    }
+
+    /** Mensagem legivel da Focus: rejeicao da SEFAZ ou erros de validacao do schema. */
+    private function mensagem_erro_focus($corpo)
+    {
+        if (!empty($corpo['mensagem_sefaz'])) return $corpo['mensagem_sefaz'];
+        $partes = array();
+        if (!empty($corpo['erros']) && is_array($corpo['erros'])) {
+            foreach ($corpo['erros'] as $erro) {
+                if (!empty($erro['mensagem'])) $partes[] = $erro['mensagem'];
+            }
+        }
+        if ($partes) return 'Dados invalidos na NFC-e: '.implode('; ', $partes);
+        return !empty($corpo['mensagem']) ? $corpo['mensagem'] : 'NFC-e rejeitada pela Focus/SEFAZ.';
     }
 }
