@@ -2908,8 +2908,9 @@ $('.data_mask').datepicker({
         var temPagamentoFiscal = false;
 
         $status.each(function(indice) {
-          if ($(this).val() !== '1') todasPagas = false;
           var forma = $formas.eq(indice).val();
+          // Duplicata em aberto (venda faturada) tambem pode emitir NFC-e.
+          if ($(this).val() !== '1' && forma !== '7') todasPagas = false;
           if (forma && forma !== '1') temPagamentoFiscal = true;
         });
 

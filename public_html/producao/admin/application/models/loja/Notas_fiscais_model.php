@@ -36,7 +36,10 @@ class Notas_fiscais_model extends CI_Model {
         if (empty($contas)) return false;
         $tem_pagamento_nao_dinheiro = false;
         foreach ($contas as $conta) {
-            if ((float) $conta->valor <= 0 || (int) $conta->status !== 1) return false;
+            if ((float) $conta->valor <= 0) return false;
+            // Duplicata (forma 7) e' venda faturada: entra na nota a prazo
+            // mesmo em aberto. As demais formas precisam estar pagas.
+            if ((int) $conta->status !== 1 && (int) $conta->forma_pgto !== 7) return false;
             if (in_array((int) $conta->forma_pgto, $this->formas_nao_dinheiro, true)) {
                 $tem_pagamento_nao_dinheiro = true;
             }

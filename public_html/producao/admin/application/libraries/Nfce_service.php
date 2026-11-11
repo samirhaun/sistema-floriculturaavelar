@@ -154,14 +154,17 @@ class Nfce_service {
                 'ncm' => $regra['ncm'], 'cfop' => $regra['cfop'], 'unidade' => 'UN', 'tributacao_json' => json_encode($regra));
         }
 
-        $contas = $this->CI->db->select('forma_pgto, valor')->from('contas_receber')
-            ->where('pedidos_id', $pedido_id)->where('status', 1)->get()->result();
+        // Parcelas pagas + duplicatas em aberto (venda faturada, paga no mes).
+        $contas = $this->CI->db->select('forma_pgto, valor, status')->from('contas_receber')
+            ->where('pedidos_id', $pedido_id)
+            ->group_start()->where('status', 1)->or_where('forma_pgto', 7)->group_end()
+            ->get()->result();
         $pagamentos_payload = array(); $pagamentos_registro = array(); $total_pagamentos = 0.0;
         foreach ($contas as $conta) {
             $forma = $this->forma_pagamento_focus((int) $conta->forma_pgto);
             $valor = round((float) $conta->valor, 2);
             if ($valor <= 0) continue;
-            $pagamento_payload = array('indicador_pagamento' => '0', 'forma_pagamento' => $forma,
+            $pagamento_payload = array('indicador_pagamento' => (int) $conta->forma_pgto === 7 ? '1' : '0', 'forma_pagamento' => $forma,
                 'valor_pagamento' => number_format($valor, 2, '.', ''));
             if (in_array($forma, array('03', '04'), true)) $pagamento_payload['tipo_integracao'] = '2';
             $pagamentos_payload[] = $pagamento_payload;
