@@ -174,6 +174,41 @@ class Produtos_model extends CI_Model {
         return $this->db->update('produtos', array('valor_custo' => $valor_custo));
     }
 
+    public function pendentes_classificacao_fiscal($ano)
+    {
+        $inicio = ((int) $ano).'-01-01';
+        $fim = (((int) $ano) + 1).'-01-01';
+        $this->db->select('produtos.id, produtos.titulo, produtos.grupo_fiscal_sugerido_id, produtos.grupo_fiscal_sugestao_confianca, produtos.grupo_fiscal_sugestao_origem, categorias.nome AS categoria, sugestao.nome AS grupo_sugerido, COUNT(pedido_produto.id) AS vendas, COALESCE(SUM(pedido_produto.quantidade), 0) AS unidades', false);
+        $this->db->from('produtos');
+        $this->db->join('pedido_produto', 'pedido_produto.produtos_id = produtos.id');
+        $this->db->join('pedidos', 'pedidos.id = pedido_produto.pedidos_id');
+        $this->db->join('categorias', 'categorias.id = produtos.categorias_id', 'left');
+        $this->db->join('grupos_fiscais_nfce sugestao', 'sugestao.id = produtos.grupo_fiscal_sugerido_id', 'left');
+        $this->db->where('pedidos.data_pedido >=', $inicio);
+        $this->db->where('pedidos.data_pedido <', $fim);
+        $this->db->where_not_in('pedidos.status_pedido', array(4, 5));
+        $this->db->where('produtos.grupos_fiscais_nfce_id IS NULL', null, false);
+        $this->db->group_start()->where('produtos.nfce_ncm IS NULL', null, false)->or_where('produtos.nfce_ncm', '')->group_end();
+        $this->db->group_by('produtos.id');
+        $this->db->order_by('unidades', 'DESC');
+        return $this->db->get()->result();
+    }
+
+    public function aprovar_grupos_fiscais(array $grupos)
+    {
+        $this->db->trans_start();
+        foreach ($grupos as $produto_id => $grupo_id) {
+            $this->db->where('id', (int) $produto_id)->update('produtos', array(
+                'grupos_fiscais_nfce_id' => (int) $grupo_id,
+                'grupo_fiscal_sugerido_id' => null,
+                'grupo_fiscal_sugestao_confianca' => null,
+                'grupo_fiscal_sugestao_origem' => null,
+            ));
+        }
+        $this->db->trans_complete();
+        return $this->db->trans_status();
+    }
+
     public function get_produtos_vinculados($idproduto)
     {
         $this->db->select('produtos_vinculados.*');

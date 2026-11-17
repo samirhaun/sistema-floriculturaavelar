@@ -25,6 +25,16 @@
                 </div>
             </div>
 
+            <div class="col-lg-2">
+                <div class="title-action">
+                    <?php if(!empty($nota_fiscal) && $nota_fiscal->status === 'autorizada'): ?>
+                        <a href="<?php echo base_url('loja/nfce/imprimir?pedido='.$pedido_id) ?>" target="_blank" class="btn btn-success"><i class="fa fa-print"></i> Reimprimir NFC-e</a>
+                    <?php else: ?>
+                        <form method="post" action="<?php echo base_url('loja/nfce/emitir') ?>" target="_blank" style="display:inline"><input type="hidden" name="pedido_id" value="<?php echo (int) $pedido_id ?>"><button class="btn btn-success"><i class="fa fa-qrcode"></i> Emitir e imprimir NFC-e</button></form>
+                    <?php endif; ?>
+                </div>
+            </div>
+
             <?php if(!empty($pedido->bilhete)): ?>
 
                 <div class="col-lg-2">
@@ -39,6 +49,20 @@
         <div id="content-print" class="row">
             <div class="col-lg-12">
                 <div class="wrapper wrapper-content animated fadeInRight">
+                    <?php if(!empty($nota_fiscal) && in_array($nota_fiscal->status, array('erro', 'rejeitada')) && !empty($nota_fiscal->erro)): ?>
+                    <div class="alert alert-danger hidden-print">
+                        <strong>NFC-e não emitida<?php echo $nota_fiscal->status === 'rejeitada' ? ' (rejeitada pela SEFAZ)' : ''; ?>:</strong>
+                        <?php echo html_escape($nota_fiscal->erro); ?>
+                        <br><small>Última tentativa em <?php echo date('d/m/Y H:i', strtotime($nota_fiscal->updated_at)); ?>. Corrija o pedido/cliente e clique em "Emitir e imprimir NFC-e" de novo.</small>
+                        <?php if(strpos($nota_fiscal->erro, 'Entrega em domicilio exige CPF') === 0 && check_habilidade('emitir_nfce_entrega_como_retirada')): ?>
+                        <form method="post" action="<?php echo base_url('loja/nfce/emitir') ?>" target="_blank" style="margin-top:8px" onsubmit="return confirm('O cliente não quis se identificar. Emitir a NFC-e deste pedido como RETIRADA (sem entrega e sem CPF)?');">
+                            <input type="hidden" name="pedido_id" value="<?php echo (int) $pedido_id ?>">
+                            <input type="hidden" name="como_retirada" value="1">
+                            <button class="btn btn-warning btn-sm"><i class="fa fa-user-secret"></i> Cliente não quer se identificar: emitir como retirada</button>
+                        </form>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
                     <?php if($pedido): ?>
                     <div class="ibox-content p-xl">
                         <div class="row">
@@ -239,9 +263,10 @@
                                 </thead>
                                 <tbody>
 
-                                        <?php 
-                                        $total_produtos = 0; 
-                                        foreach ($produtos as $key => $produto): 
+                                        <?php
+                                        $total_produtos = 0;
+                                        if(is_array($produtos) && !empty($produtos)):
+                                        foreach ($produtos as $key => $produto):
                                          ?>
                                         <tr>
                                             <td style="width: 70%;">
@@ -252,13 +277,14 @@
                                             </td>
                                             <td><?php echo $produto->id ?></td>
                                             <td><?php echo $produto->quantidade ?></td>
-                                          
+
                                             <td>R$ <?php echo number_format($produto->valor, 2, ',', '.'); ?></td>
                                             <td>R$ <?php echo number_format($produto->valor*$produto->quantidade, 2, ',', '.'); ?></td>
                                         </tr>
-                                    <?php 
+                                    <?php
                                     $total_produtos = $total_produtos + $produto->valor * $produto->quantidade;
-                                    endforeach; 
+                                    endforeach;
+                                    endif;
                                     ?>
                                 </tbody>
                             </table>
@@ -322,3 +348,9 @@
                 return true;
             });
         </script> -->
+
+<?php if(!empty($notification)): ?>
+<script>
+    $(function(){ showNotification(<?php echo json_encode($notification['type']) ?>, <?php echo json_encode($notification['title']) ?>, <?php echo json_encode($notification['message']) ?>); });
+</script>
+<?php endif; ?>

@@ -305,6 +305,10 @@ $route['loja/excluir-promocao']                    = "Loja_promocoes_slides/excl
 //-->produtos
 $route['loja/produtos']                             = "Loja_produtos/lista";
 $route['loja/produtos-custos']                      = "Loja_produtos/custos";
+$route['loja/grupos-fiscais']                       = "Loja_produtos/grupos_fiscais";
+$route['loja/salvar-grupo-fiscal']                  = "Loja_produtos/salvar_grupo_fiscal";
+$route['loja/revisar-classificacao-fiscal']         = "Loja_produtos/revisar_classificacao_fiscal";
+$route['loja/aprovar-classificacao-fiscal']         = "Loja_produtos/aprovar_classificacao_fiscal";
 $route['loja/salvar-custo-produto']                 = "Loja_produtos/salvar_custo";
 $route['loja/novo-produto']                         = "Loja_produtos/novo_produto";
 $route['loja/salvar-produto']                       = "Loja_produtos/salvar_produto";
@@ -354,6 +358,15 @@ $route['loja/enderecos']                            = "Loja_clientes/lista_ender
 
 //-->pedidos
 $route['loja/pedidos']                               = "Loja_pedidos/lista";
+$route['loja/notas-fiscais']                         = "Loja_notas_fiscais/lista";
+$route['loja/sintegra']                              = "Loja_notas_fiscais/sintegra";
+$route['loja/sintegra/download']                     = "Loja_notas_fiscais/sintegra_download";
+$route['loja/sintegra/importar-entradas']            = "Loja_notas_fiscais/sintegra_importar_entradas";
+$route['loja/sintegra/entrada-xml']                  = "Loja_notas_fiscais/sintegra_entrada_xml";
+$route['loja/sintegra/excluir-entrada']              = "Loja_notas_fiscais/sintegra_excluir_entrada";
+$route['loja/nfce/emitir']                           = "Loja_notas_fiscais/emitir";
+$route['loja/nfce/imprimir']                         = "Loja_notas_fiscais/imprimir";
+$route['loja/nfce/xml']                              = "Loja_notas_fiscais/xml";
 $route['loja/detalhes-pedido']                       = "Loja_pedidos/detalhes_pedido";
 $route['loja/imprimir']                              = "Loja_pedidos/detalhes_pedido";
 $route['loja/editar-pedido']                         = "Loja_pedidos/editar_pedido";
@@ -367,6 +380,9 @@ $route['loja/buscar-pedidos-relatorios']                   = "Loja_demonstrativo
 
 $route['loja/demonstrativo-novo']                          = "Loja_demonstrativo/demonstrativo_novo";
 $route['loja/buscar-pedidos-relatorios-novo']                   = "Loja_demonstrativo/demonstrativo_buscar_novo";
+$route['loja/exportar-contas-pagar-relatorio-novo']             = "Loja_demonstrativo/exportar_contas_pagar_novo";
+$route['loja/exportar-contas-receber-relatorio-novo']           = "Loja_demonstrativo/exportar_contas_receber_novo";
+$route['loja/exportar-lancamentos-relatorio-novo']               = "Loja_demonstrativo/exportar_lancamentos_novo";
 
 $route['loja/relatorio-vendas']                            = "Loja_relatorio_vendas/index";
 $route['loja/relatorio-vendas/buscar']                     = "Loja_relatorio_vendas/buscar";

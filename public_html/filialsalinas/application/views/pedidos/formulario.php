@@ -1654,11 +1654,11 @@ function modelo_valor(elementos){
 
       if(auth_em_progresso) return;
 
-      var valor_produtos = numero_decimal($('#valor').val());
-      var frete = numero_decimal($('#valor_frete').val());
+      var valor_produtos = parseFloat($('#valor').val()) || 0;
+      var frete = parseFloat($('#valor_frete').val()) || 0;
       var desconto = $('#valor_desconto').val();
-      var desconto_num = numero_decimal(desconto);
       var tipo_desconto_atual = $('#tipo_desconto').val();
+      var desconto_num = numero_decimal(desconto);
 
       if(auth_desconto_ok && desconto != desconto_pendente_valor){
         auth_desconto_ok = false;
@@ -1672,7 +1672,8 @@ function modelo_valor(elementos){
 
         var limite_pct = parseFloat(total_desconto_usuario);
         var limite_valor = parseFloat(total_desconto_usuario_valor);
-        var base_desconto = valor_produtos + frete;
+        // O desconto incide SOMENTE sobre o valor dos produtos (o frete entra apos o desconto).
+        var base_desconto = valor_produtos;
         if(tipo_desconto_atual == 'porcentagem'){
           var pct_aplicado = desconto_num;
           var desconto_reais = base_desconto * desconto_num / 100;
@@ -1680,23 +1681,31 @@ function modelo_valor(elementos){
           var pct_aplicado = base_desconto > 0 ? (desconto_num / base_desconto) * 100 : 0;
           var desconto_reais = desconto_num;
         }
-        var excedeu_pct = limite_pct > 0 && pct_aplicado > limite_pct;
+        // Se o desconto for em %, valida apenas o limite em %.
+        // Se o desconto for em R$, valida apenas o limite em R$.
+        var excedeu_pct = tipo_desconto_atual == 'porcentagem' && limite_pct > 0 && pct_aplicado > limite_pct;
         var excedeu_valor = tipo_desconto_atual == 'dinheiro' && limite_valor > 0 && desconto_reais > limite_valor;
 
         if((excedeu_pct || excedeu_valor) && !auth_desconto_ok){
           desconto_pendente_valor = desconto;
           auth_pct_solicitado = pct_aplicado;
           var desconto_geral = 0;
-          var total_geral = valor_produtos + frete;
+          var total_geral = parseFloat(valor_produtos) + parseFloat(frete) - 0;
           $('#valor_total').val(total_geral.toFixed(2));
 
           auth_em_progresso = true;
           $('#valor_desconto').val(0);
 
           var limite_texto = [];
-          if(limite_pct > 0) limite_texto.push(limite_pct.toFixed(0) + '%');
-          if(limite_valor > 0) limite_texto.push('R$ ' + limite_valor.toFixed(2).replace('.', ','));
-          $('#auth-pct').text(pct_aplicado.toFixed(1) + '% / R$ ' + desconto_reais.toFixed(2).replace('.', ','));
+          var pct_texto;
+          if(tipo_desconto_atual == 'porcentagem'){
+            if(limite_pct > 0) limite_texto.push(limite_pct.toFixed(0) + '%');
+            pct_texto = pct_aplicado.toFixed(1) + '%';
+          } else {
+            if(limite_valor > 0) limite_texto.push('R$ ' + limite_valor.toFixed(2).replace('.', ','));
+            pct_texto = 'R$ ' + desconto_reais.toFixed(2).replace('.', ',');
+          }
+          $('#auth-pct').text(pct_texto);
           $('#auth-limite').text(limite_texto.join(' ou '));
           $('#auth-section-solicitar').show();
           $('#auth-section-codigo').hide();
@@ -2858,8 +2867,7 @@ $('.data_mask').datepicker({
               return false;
             }
 
-            bloqueia_envio_pedido();
-            document.getElementById('form-cadastro-pedido').submit();
+            pergunta_emissao_nfce($formPedido);
           }
 
 
@@ -2883,13 +2891,100 @@ $('.data_mask').datepicker({
           return false;
         }
 
-        var $formPedido = $('#form-cadastro-pedido');
-        if ($formPedido.data('validator') && !$formPedido.valid()) {
-          return false;
+        // Enter em qualquer campo passa pelo mesmo fluxo do botao Salvar.
+        salva_form();
+        return false;
+      }
+
+      // O modal so e oferecido ao fechar todas as parcelas com ao menos uma
+      // forma nao-dinheiro, que e a regra fiscal configurada para a loja.
+      var fluxoNfceHabilitado = <?php echo !empty($nfce_fluxo_habilitado) ? 'true' : 'false'; ?>;
+
+      function pagamento_elegivel_para_nfce()
+      {
+        var $status = $('[name="status_receita[]"]');
+        var $formas = $('[name="forma_pgto_receita[]"]');
+        var todasPagas = $status.length > 0;
+        var temPagamentoFiscal = false;
+
+        $status.each(function(indice) {
+          var forma = $formas.eq(indice).val();
+          // Duplicata em aberto (venda faturada) tambem pode emitir NFC-e.
+          if ($(this).val() !== '1' && forma !== '7') todasPagas = false;
+          if (forma && forma !== '1') temPagamentoFiscal = true;
+        });
+
+        return todasPagas && temPagamentoFiscal;
+      }
+
+      function definir_opcao_nfce($formPedido, emitir, imprimir)
+      {
+        $formPedido.find('input[name="emitir_nfce_agora"], input[name="imprimir_nfce_agora"]').remove();
+        if (emitir) {
+          $formPedido.append('<input type="hidden" name="emitir_nfce_agora" value="1">');
+          if (imprimir) {
+            $formPedido.append('<input type="hidden" name="imprimir_nfce_agora" value="1">');
+          }
+        }
+      }
+
+      function enviar_pedido($formPedido, emitirNfce, imprimirNfce)
+      {
+        definir_opcao_nfce($formPedido, emitirNfce, imprimirNfce);
+        bloqueia_envio_pedido();
+
+        if (emitirNfce) {
+          swal({
+            title: 'Comunicando com a SEFAZ',
+            text: 'Salvando o pagamento e solicitando a autorizacao do cupom fiscal...',
+            type: 'info',
+            showConfirmButton: false,
+            allowEscapeKey: false,
+            allowOutsideClick: false
+          });
         }
 
-        bloqueia_envio_pedido();
-        return true;
+        // submit nativo evita que o onsubmit abra o modal uma segunda vez.
+        $formPedido.get(0).submit();
+      }
+
+      function pergunta_emissao_nfce($formPedido)
+      {
+        if (!fluxoNfceHabilitado || !pagamento_elegivel_para_nfce()) {
+          enviar_pedido($formPedido, false, false);
+          return;
+        }
+
+        swal({
+          title: 'Emitir cupom fiscal?',
+          text: 'O pagamento foi confirmado. Deseja emitir a NFC-e desta venda agora?',
+          type: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#1ab394',
+          confirmButtonText: 'Sim, emitir',
+          cancelButtonText: 'Nao emitir',
+          closeOnConfirm: false,
+          closeOnCancel: true
+        }, function(confirmouEmissao) {
+          if (!confirmouEmissao) {
+            enviar_pedido($formPedido, false, false);
+            return;
+          }
+
+          swal({
+            title: 'Imprimir cupom?',
+            text: 'Apos a autorizacao, enviar para a mesma impressora padrao usada no recibo?',
+            type: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#1ab394',
+            confirmButtonText: 'Emitir e imprimir',
+            cancelButtonText: 'Emitir sem imprimir',
+            closeOnConfirm: false,
+            closeOnCancel: false
+          }, function(imprimir) {
+            enviar_pedido($formPedido, true, imprimir === true);
+          });
+        });
       }
 
 
@@ -2935,6 +3030,8 @@ $('.data_mask').datepicker({
 
         $('#bairro_entrega').val(item.text);
         if(item.valor_frete !== undefined && item.valor_frete !== null){
+          // #valor_frete não tem máscara -- espera número com ponto decimal
+          // (mesmo formato que o PHP já usa pra preencher o valor inicial).
           $('#valor_frete').val(parseFloat(item.valor_frete).toFixed(2));
           calcula_pedito_total();
         }

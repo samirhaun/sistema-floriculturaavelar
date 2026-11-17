@@ -55,6 +55,7 @@
                             <h5>Resultado: <?php echo $filtro_inicio; ?> a <?php echo $filtro_fim; ?></h5>
                         </div>
                         <div class="col-lg-6 text-right">
+                            <button class="btn btn-primary btn-exportar-xlsx" type="button" data-export-url="<?php echo base_url(array('loja', 'exportar-lancamentos-relatorio-novo')); ?>"><i class="fa fa-file-excel-o"></i> Exportar tudo (Excel)</button>
                             <button class="btn btn-success" onclick="imprimir_resultado()" type="button"><i class="fa fa-print"></i> Imprimir</button>
                         </div>
                     </div>
@@ -302,6 +303,73 @@
                                 </div>
                             </div>
 
+                            <!-- FECHAMENTO CARTAO -->
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="breakdown-box" style="background:#f0fbf9; border:1px solid #11998e;">
+                                        <h5><i class="fa fa-bank text-success"></i> Fechamento de cartão (bruto &minus; taxas = líquido no banco)</h5>
+                                        <table class="table table-condensed">
+                                            <thead><tr><th>Forma de pagamento</th><th class="text-right">Bruto</th><th class="text-right">(−) Taxa maquininha</th><th class="text-right">(−) Antecipação</th><th class="text-right">= Líquido</th></tr></thead>
+                                            <tbody>
+                                                <?php
+                                                $fech_total_bruto = 0; $fech_total_maquininha = 0; $fech_total_antecipacao = 0;
+                                                if(!empty($fechamento_cartao)):
+                                                    foreach($fechamento_cartao as $fc):
+                                                        $eh_antecipacao_agrupada = ((int) $fc->forma_pgto === 0);
+                                                        $fp_nome_fc = isset($nomes_forma_pgto[$fc->forma_pgto]) ? $nomes_forma_pgto[$fc->forma_pgto] : 'Outros';
+                                                        if($eh_antecipacao_agrupada) $fp_nome_fc = 'Antecipação agrupada por bandeira';
+                                                        $bruto_fc = (float) $fc->bruto;
+                                                        $taxa_maquininha_fc = (float) $fc->taxa_maquininha;
+                                                        $antecipacao_fc = (float) $fc->antecipacao;
+                                                        $liquido_fc = $bruto_fc - $taxa_maquininha_fc - $antecipacao_fc;
+                                                        $fech_total_bruto += $bruto_fc;
+                                                        $fech_total_maquininha += $taxa_maquininha_fc;
+                                                        $fech_total_antecipacao += $antecipacao_fc;
+                                                ?>
+                                                <tr>
+                                                    <td><?php echo $fp_nome_fc; ?></td>
+                                                    <td class="text-right"><?php echo $eh_antecipacao_agrupada ? '—' : 'R$ '.number_format($bruto_fc, 2, ',', '.'); ?></td>
+                                                    <td class="text-right text-danger"><?php echo $eh_antecipacao_agrupada ? '—' : 'R$ '.number_format($taxa_maquininha_fc, 2, ',', '.'); ?></td>
+                                                    <td class="text-right text-danger"><?php echo $antecipacao_fc > 0 ? 'R$ '.number_format($antecipacao_fc, 2, ',', '.') : '—'; ?></td>
+                                                    <td class="text-right text-success"><?php echo $eh_antecipacao_agrupada ? '—' : '<strong>R$ '.number_format($liquido_fc, 2, ',', '.').'</strong>'; ?></td>
+                                                </tr>
+                                                <?php
+                                                    endforeach;
+                                                else:
+                                                ?>
+                                                <tr><td colspan="5" class="text-center text-muted">Nenhuma venda de cartão no período</td></tr>
+                                                <?php endif; ?>
+                                            </tbody>
+                                            <?php if(!empty($fechamento_cartao)): ?>
+                                            <tfoot>
+                                                <tr style="font-weight:700; border-top:2px solid #11998e;">
+                                                    <td>TOTAL CARTÃO</td>
+                                                    <td class="text-right">R$ <?php echo number_format($fech_total_bruto, 2, ',', '.'); ?></td>
+                                                    <td class="text-right text-danger">R$ <?php echo number_format($fech_total_maquininha, 2, ',', '.'); ?></td>
+                                                    <td class="text-right text-danger">R$ <?php echo number_format($fech_total_antecipacao, 2, ',', '.'); ?></td>
+                                                    <td class="text-right text-success">R$ <?php echo number_format($fech_total_bruto - $fech_total_maquininha - $fech_total_antecipacao, 2, ',', '.'); ?></td>
+                                                </tr>
+                                                <?php
+                                                // total que deve entrar no banco = Pix (forma 9) + cartao liquido
+                                                $fech_pix = 0;
+                                                if(isset($resumo_receitas[9])):
+                                                    $fech_pix = $resumo_receitas[9]['pago'] + $resumo_receitas[9]['aberto'];
+                                                endif;
+                                                ?>
+                                                <tr style="font-weight:700; background:#e8f8f5;">
+                                                    <td colspan="4">PREVISÃO NO BANCO (Pix + Cartão líquido)</td>
+                                                    <td class="text-right text-success" style="font-size:14px;">R$ <?php echo number_format($fech_pix + $fech_total_bruto - $fech_total_maquininha - $fech_total_antecipacao, 2, ',', '.'); ?></td>
+                                                </tr>
+                                            </tfoot>
+                                            <?php endif; ?>
+                                        </table>
+                                        <p class="text-muted" style="font-size:11px; margin-top:5px;">
+                                            <i class="fa fa-info-circle"></i> O valor líquido do cartão é o que deve constar no extrato bancário (taxas já descontadas pela maquininha).
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- STATUS -->
                             <div class="row">
                                 <div class="col-md-12">
@@ -521,6 +589,11 @@
                             <div class="tab-content">
                                 <!-- SUB-TAB RECEITAS -->
                                 <div class="tab-pane active" id="sub-rec">
+                                    <div class="clearfix hidden-print" style="margin-bottom:8px;">
+                                        <button class="btn btn-success btn-sm pull-right btn-exportar-xlsx" type="button" data-export-url="<?php echo base_url(array('loja', 'exportar-contas-receber-relatorio-novo')); ?>">
+                                            <i class="fa fa-download"></i> Exportar contas a receber
+                                        </button>
+                                    </div>
                                     <?php if($total_pages_receitas > 1): ?>
                                     <div class="pagination-wrapper hidden-print" style="margin-bottom:8px;">
                                         <span style="font-size:11px;"><?php echo $total_receitas_count; ?> registros — pág. <?php echo $page_receitas; ?>/<?php echo $total_pages_receitas; ?></span>
@@ -535,13 +608,15 @@
                                     <?php endif; ?>
                                     <div class="table-responsive">
                                     <table class="table table-striped table-bordered tabela-fluxo">
-                                        <thead><tr><th>Código</th><th>Cliente</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Data Pago</th><th>Forma Pgto</th></tr></thead>
+                                        <thead><tr><th>Código</th><th>Cliente</th><th>Categoria</th><th>Subcategoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Data Pago</th><th>Forma Pgto</th></tr></thead>
                                         <tbody>
                                             <?php if(!empty($pedidos_pag)): foreach($pedidos_pag as $r): ?>
                                             <?php $cancelada_relatorio = !empty($r->cancelada_relatorio); ?>
                                             <tr class="<?php echo $cancelada_relatorio ? 'linha-cancelada' : ''; ?>">
                                                 <td><?php echo $r->id; ?></td>
                                                 <td><?php echo $r->cliente_pedido; ?></td>
+                                                <td><?php echo !empty($r->categoria_pedido) ? htmlspecialchars($r->categoria_pedido, ENT_QUOTES, 'UTF-8') : '-'; ?></td>
+                                                <td><?php echo !empty($r->subcategoria_pedido) ? htmlspecialchars($r->subcategoria_pedido, ENT_QUOTES, 'UTF-8') : '-'; ?></td>
                                                 <td><?php echo date("d/m/Y", strtotime($r->vencimento_receita)); ?></td>
                                                 <td>R$ <?php echo number_format($r->valor_receita, 2, ',', '.'); ?><?php echo $cancelada_relatorio ? ' <span class="badge badge-cancelada">fora dos totais</span>' : ''; ?></td>
                                                 <td><?php echo $cancelada_relatorio ? '<span class="badge badge-cancelada">Cancelada</span>' : (($r->status_receita == 0) ? '<span class="badge badge-aberto">Em aberto</span>' : '<span class="badge badge-pago">Pago</span>'); ?></td>
@@ -549,7 +624,7 @@
                                                 <td><?php echo isset($nomes_forma_pgto[$r->forma_pgto_receita]) ? $nomes_forma_pgto[$r->forma_pgto_receita] : '-'; ?></td>
                                             </tr>
                                             <?php endforeach; else: ?>
-                                            <tr><td colspan="7" class="text-center text-muted">Nenhuma receita</td></tr>
+                                            <tr><td colspan="9" class="text-center text-muted">Nenhuma receita</td></tr>
                                             <?php endif; ?>
                                         </tbody>
                                     </table>
@@ -558,6 +633,11 @@
 
                                 <!-- SUB-TAB DESPESAS -->
                                 <div class="tab-pane" id="sub-desp">
+                                    <div class="clearfix hidden-print" style="margin-bottom:8px;">
+                                        <button class="btn btn-success btn-sm pull-right btn-exportar-xlsx" type="button" data-export-url="<?php echo base_url(array('loja', 'exportar-contas-pagar-relatorio-novo')); ?>">
+                                            <i class="fa fa-download"></i> Exportar contas a pagar
+                                        </button>
+                                    </div>
                                     <?php if($total_pages_despesas > 1): ?>
                                     <div class="pagination-wrapper hidden-print" style="margin-bottom:8px;">
                                         <span style="font-size:11px;"><?php echo $total_despesas_count; ?> registros — pág. <?php echo $page_despesas; ?>/<?php echo $total_pages_despesas; ?></span>
@@ -572,12 +652,14 @@
                                     <?php endif; ?>
                                     <div class="table-responsive">
                                     <table class="table table-striped table-bordered tabela-fluxo" style="background:#fff5f5;">
-                                        <thead><tr><th>Código</th><th>Fornecedor</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Data Pago</th><th>Forma Pgto</th></tr></thead>
+                                        <thead><tr><th>Código</th><th>Fornecedor</th><th>Categoria</th><th>Subcategoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Data Pago</th><th>Forma Pgto</th></tr></thead>
                                         <tbody>
                                             <?php if(!empty($contas_pag)): foreach($contas_pag as $c): ?>
                                             <tr>
                                                 <td><?php echo $c->id; ?></td>
                                                 <td><?php echo $c->fornecedor; ?></td>
+                                                <td><?php echo !empty($c->categoria_despesa) ? htmlspecialchars(trim((!empty($c->codigo_categoria_despesa) ? $c->codigo_categoria_despesa . ' - ' : '') . $c->categoria_despesa), ENT_QUOTES, 'UTF-8') : (!empty($c->plano_conta) ? htmlspecialchars(trim((!empty($c->cod_plano_conta) ? $c->cod_plano_conta . ' - ' : '') . $c->plano_conta), ENT_QUOTES, 'UTF-8') : '-'); ?></td>
+                                                <td><?php echo !empty($c->categoria_despesa) && !empty($c->subcategoria_despesa) ? htmlspecialchars(trim((!empty($c->codigo_subcategoria_despesa) ? $c->codigo_subcategoria_despesa . ' - ' : '') . $c->subcategoria_despesa), ENT_QUOTES, 'UTF-8') : '-'; ?></td>
                                                 <td><?php echo date("d/m/Y", strtotime($c->data_vencimento)); ?></td>
                                                 <td>R$ <?php echo number_format($c->valor, 2, ',', '.'); ?></td>
                                                 <td><?php echo ($c->status == 0) ? '<span class="badge badge-aberto">Em aberto</span>' : '<span class="badge badge-pago">Paga</span>'; ?></td>
@@ -585,7 +667,7 @@
                                                 <td><?php echo isset($nomes_forma_pgto[$c->forma_pgto]) ? $nomes_forma_pgto[$c->forma_pgto] : '-'; ?></td>
                                             </tr>
                                             <?php endforeach; else: ?>
-                                            <tr><td colspan="7" class="text-center text-muted">Nenhuma despesa</td></tr>
+                                            <tr><td colspan="9" class="text-center text-muted">Nenhuma despesa</td></tr>
                                             <?php endif; ?>
                                         </tbody>
                                     </table>

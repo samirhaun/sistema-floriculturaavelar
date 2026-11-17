@@ -25,7 +25,9 @@ class Pedidos_model extends CI_Model {
                 if(isset($dados['status_pedido']) && $status_anterior){
                     $era_cancelado = in_array((int) $status_anterior->status_pedido, array(4, 5));
                     $esta_cancelado = in_array((int) $dados['status_pedido'], array(4, 5));
-                    if($era_cancelado !== $esta_cancelado) $this->taxas_cartao_model->sincronizar_status_pedido($id);
+                    if($era_cancelado !== $esta_cancelado){
+                        $this->taxas_cartao_model->sincronizar_status_pedido($id);
+                    }
                 }
 
                 return $id;
@@ -47,6 +49,17 @@ class Pedidos_model extends CI_Model {
                 return false;
             }
         }
+    }
+
+    public function check_pedido_duplicado($clientes_id, $valor_total, $minutos = 5)
+    {
+        $this->db->where('clientes_id', $clientes_id);
+        $this->db->where('valor_total', $valor_total);
+        $this->db->where('data_pedido >=', date('Y-m-d H:i:s', strtotime('-' . (int)$minutos . ' minutes')));
+        $this->db->where('origem', 1);
+        $this->db->where_in('status_pedido', array(0, 1, 5));
+        $query = $this->db->get('pedidos');
+        return $query->num_rows() > 0;
     }
 
     public function limpa_saida_estoque_pedido($pedido)
@@ -173,7 +186,7 @@ class Pedidos_model extends CI_Model {
 
             return $query->result();
         }else{
-            return FALSE;
+            return array();
         }
     }
 
@@ -592,6 +605,10 @@ class Pedidos_model extends CI_Model {
         $this->db->select('clientes.nome as cliente_pedido, clientes.telefone as cliente_telefone,  clientes.email as cliente_email');
         $this->db->select('vendedores.descricao as vendedor_pedido');
         $this->db->select('eventos.descricao as evento_pedido');
+        // A conta a receber pertence ao pedido, que pode ter produtos de mais de
+        // uma classificacao. Agregar aqui evita repetir a parcela na listagem.
+        $this->db->select('(SELECT GROUP_CONCAT(DISTINCT CONCAT(grupos_categorias.id, " - ", grupos_categorias.nome) ORDER BY grupos_categorias.nome SEPARATOR ", ") FROM pedido_produto LEFT JOIN produtos ON produtos.id = pedido_produto.produtos_id LEFT JOIN categorias ON categorias.id = produtos.categorias_id LEFT JOIN grupos_categorias ON grupos_categorias.id = categorias.grupos_categorias_id WHERE pedido_produto.pedidos_id = pedidos.id) as categoria_pedido', false);
+        $this->db->select('(SELECT GROUP_CONCAT(DISTINCT CONCAT(categorias.id, " - ", categorias.nome) ORDER BY categorias.nome SEPARATOR ", ") FROM pedido_produto LEFT JOIN produtos ON produtos.id = pedido_produto.produtos_id LEFT JOIN categorias ON categorias.id = produtos.categorias_id WHERE pedido_produto.pedidos_id = pedidos.id) as subcategoria_pedido', false);
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id=contas_receber.pedidos_id','left');
         $this->db->join('clientes', 'clientes.id=pedidos.clientes_id','left');
@@ -645,10 +662,11 @@ class Pedidos_model extends CI_Model {
     function get_demonstrativo_pagar_novo($inicio, $fim, $origem, $vendedor, $plano_conta, $referencia, $formapgto,$situacaopgto){
 
 
-        $this->db->select('contas_pagar.*, fornecedores.nome as fornecedor,plano_contas.descricao as plano_conta, plano_contas.cod as cod_plano_conta');
+        $this->db->select('contas_pagar.*, fornecedores.nome as fornecedor,plano_contas.descricao as plano_conta, plano_contas.cod as cod_plano_conta, plano_contas_pai.cod as codigo_categoria_despesa, plano_contas_pai.descricao as categoria_despesa, plano_contas.cod as codigo_subcategoria_despesa, plano_contas.descricao as subcategoria_despesa');
         $this->db->from('contas_pagar');
         $this->db->join('fornecedores','fornecedores.id = contas_pagar.fornecedores_id');
         $this->db->join('plano_contas','plano_contas.id = contas_pagar.plano_contas_id');
+        $this->db->join('plano_contas as plano_contas_pai', 'plano_contas_pai.id = plano_contas.plano_conta_id', 'left');
 
         if($referencia =='emissao'):
 
@@ -766,6 +784,8 @@ class Pedidos_model extends CI_Model {
         $this->db->select('clientes.nome as cliente_pedido, clientes.telefone as cliente_telefone, clientes.email as cliente_email');
         $this->db->select('vendedores.descricao as vendedor_pedido');
         $this->db->select('eventos.descricao as evento_pedido');
+        $this->db->select('(SELECT GROUP_CONCAT(DISTINCT CONCAT(grupos_categorias.id, " - ", grupos_categorias.nome) ORDER BY grupos_categorias.nome SEPARATOR ", ") FROM pedido_produto LEFT JOIN produtos ON produtos.id = pedido_produto.produtos_id LEFT JOIN categorias ON categorias.id = produtos.categorias_id LEFT JOIN grupos_categorias ON grupos_categorias.id = categorias.grupos_categorias_id WHERE pedido_produto.pedidos_id = pedidos.id) as categoria_pedido', false);
+        $this->db->select('(SELECT GROUP_CONCAT(DISTINCT CONCAT(categorias.id, " - ", categorias.nome) ORDER BY categorias.nome SEPARATOR ", ") FROM pedido_produto LEFT JOIN produtos ON produtos.id = pedido_produto.produtos_id LEFT JOIN categorias ON categorias.id = produtos.categorias_id WHERE pedido_produto.pedidos_id = pedidos.id) as subcategoria_pedido', false);
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id=contas_receber.pedidos_id','left');
         $this->db->join('clientes', 'clientes.id=pedidos.clientes_id','left');
@@ -783,10 +803,11 @@ class Pedidos_model extends CI_Model {
     }
 
     function get_demonstrativo_pagar_novo_paginated($inicio, $fim, $origem, $vendedor, $plano_conta, $referencia, $formapgto, $situacaopgto, $limit, $offset){
-        $this->db->select('contas_pagar.*, fornecedores.nome as fornecedor,plano_contas.descricao as plano_conta, plano_contas.cod as cod_plano_conta');
+        $this->db->select('contas_pagar.*, fornecedores.nome as fornecedor,plano_contas.descricao as plano_conta, plano_contas.cod as cod_plano_conta, plano_contas_pai.cod as codigo_categoria_despesa, plano_contas_pai.descricao as categoria_despesa, plano_contas.cod as codigo_subcategoria_despesa, plano_contas.descricao as subcategoria_despesa');
         $this->db->from('contas_pagar');
         $this->db->join('fornecedores','fornecedores.id = contas_pagar.fornecedores_id');
         $this->db->join('plano_contas','plano_contas.id = contas_pagar.plano_contas_id');
+        $this->db->join('plano_contas as plano_contas_pai', 'plano_contas_pai.id = plano_contas.plano_conta_id', 'left');
         $this->_apply_filtros_despesas($inicio, $fim, $plano_conta, $referencia, $formapgto, $situacaopgto);
         $this->db->order_by('contas_pagar.data_vencimento', 'DESC');
         $this->db->limit($limit, $offset);
@@ -805,6 +826,9 @@ class Pedidos_model extends CI_Model {
     function get_fluxo_entradas_vendido_recebido_por_forma($inicio, $fim, $origem, $vendedor, $entregador, $formapgto){
         $resultado = array();
 
+        // Venda realizada = conta efetivamente paga, pela competencia definida
+        // no vencimento. Isso preserva a data comercial quando um pedido e
+        // lancado retroativamente por indisponibilidade do sistema.
         $this->db->select('contas_receber.forma_pgto, SUM(contas_receber.valor) as total');
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
@@ -819,6 +843,7 @@ class Pedidos_model extends CI_Model {
             $resultado[$forma]['vendido'] = (float) $linha->total;
         }
 
+        // Entradas efetivas no periodo: liquidacao para cartao e data de pagamento nos demais meios.
         $this->db->select('contas_receber.forma_pgto, SUM(contas_receber.valor) as total');
         $this->db->from('contas_receber');
         $this->db->join('pedidos', 'pedidos.id = contas_receber.pedidos_id');
@@ -861,6 +886,47 @@ class Pedidos_model extends CI_Model {
         $this->_apply_filtros_despesas($inicio, $fim, $plano_conta, $referencia, $formapgto, $situacaopgto);
         $this->db->group_by('contas_pagar.forma_pgto, contas_pagar.status');
         return $this->db->get()->result();
+    }
+
+    /**
+     * Fechamento de cartao: bruto, taxas e liquido por forma de pagamento.
+     * Mostra quanto deve entrar liquido no banco (bruto - taxa maquininha/antecipacao).
+     */
+    function get_fechamento_cartao($inicio, $fim, $dtreferencia){
+        $coluna_data = ($dtreferencia == 'pgto') ? 'COALESCE(cr.data_liquidacao, cr.data_pago)' : 'cr.data_vencimento';
+        $coluna_data_taxa = ($dtreferencia == 'pgto') ? 'cp.data_pago' : 'cp.data_vencimento';
+        $sql = "SELECT cr.forma_pgto,
+                       SUM(cr.valor) AS bruto,
+                       COALESCE(SUM(tm.valor), 0) AS taxa_maquininha,
+                       COALESCE(SUM(ta.valor), 0) AS antecipacao
+                FROM contas_receber cr
+                INNER JOIN pedidos p ON p.id = cr.pedidos_id
+                LEFT JOIN contas_pagar tm
+                  ON tm.id = cr.taxa_contas_pagar_id
+                 AND tm.origem = 'taxa_maquininha'
+                LEFT JOIN (
+                    SELECT contas_receber_id, SUM(valor) AS valor
+                    FROM contas_pagar
+                    WHERE origem = 'taxa_antecipacao'
+                      AND chave_agrupamento IS NULL
+                    GROUP BY contas_receber_id
+                ) ta ON ta.contas_receber_id = cr.id
+                WHERE cr.forma_pgto IN (2, 3, 4, 5, 6)
+                  AND p.status_pedido NOT IN (4, 5)
+                  AND " . $coluna_data . " BETWEEN " . $this->db->escape($inicio.' 00:00:00') . " AND " . $this->db->escape($fim.' 23:59:00') . "
+                GROUP BY cr.forma_pgto
+                UNION ALL
+                SELECT 0 AS forma_pgto,
+                       0 AS bruto,
+                       0 AS taxa_maquininha,
+                       SUM(cp.valor) AS antecipacao
+                FROM contas_pagar cp
+                WHERE cp.origem = 'taxa_antecipacao'
+                  AND cp.chave_agrupamento IS NOT NULL
+                  AND " . $coluna_data_taxa . " BETWEEN " . $this->db->escape($inicio.' 00:00:00') . " AND " . $this->db->escape($fim.' 23:59:00') . "
+                HAVING SUM(cp.valor) > 0
+                ORDER BY forma_pgto ASC";
+        return $this->db->query($sql)->result();
     }
 
     function get_demonstrativo_totais_gerais_receitas($inicio, $fim, $origem, $vendedor, $dtreferencia, $situacaopgto, $entregador, $formapgto){

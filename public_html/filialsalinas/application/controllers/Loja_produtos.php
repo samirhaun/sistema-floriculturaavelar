@@ -6,6 +6,7 @@ class Loja_produtos extends TEC_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->model('loja/produtos_model');
+        $this->load->model('loja/grupos_fiscais_nfce_model');
         $this->load->helper('form');
         $this->load->helper('text');
 
@@ -52,6 +53,62 @@ class Loja_produtos extends TEC_Controller {
         $this->montaTela('loja/produtos_custos', $data);
     }
 
+    public function grupos_fiscais()
+    {
+        if (!check_habilidade('visualizar_produtos')) { show_error('Acesso negado.', 403); }
+        $data['grupos'] = $this->grupos_fiscais_nfce_model->listar();
+        $data['grupo_edicao'] = $this->input->get('id') ? $this->grupos_fiscais_nfce_model->buscar($this->input->get('id')) : null;
+        $this->montaTela('loja/grupos_fiscais/lista', $data);
+    }
+
+    public function salvar_grupo_fiscal()
+    {
+        if (!check_habilidade('visualizar_produtos')) { show_error('Acesso negado.', 403); }
+        $id = (int) $this->input->post('id');
+        $dados = array(
+            'nome' => trim($this->input->post('nome')),
+            'ncm' => preg_replace('/\D/', '', $this->input->post('ncm')),
+            'csosn' => trim($this->input->post('csosn')),
+            'pis_cst' => trim($this->input->post('pis_cst')),
+            'cofins_cst' => trim($this->input->post('cofins_cst')),
+            'ativo' => $this->input->post('ativo') ? 1 : 0,
+            'updated_at' => date('Y-m-d H:i:s'),
+        );
+        if (!$id) $dados['created_at'] = date('Y-m-d H:i:s');
+        if (strlen($dados['ncm']) < 2 || !$dados['nome']) {
+            redirect('loja/grupos-fiscais?type=error&title=Grupo+fiscal&message='.urlencode('Informe nome e NCM validos.'));
+            return;
+        }
+        $this->grupos_fiscais_nfce_model->salvar($dados, $id ?: null);
+        redirect('loja/grupos-fiscais?type=success&title=Grupo+fiscal&message='.urlencode('Grupo fiscal salvo.'));
+    }
+
+    public function revisar_classificacao_fiscal()
+    {
+        if (!check_habilidade('visualizar_produtos')) { show_error('Acesso negado.', 403); }
+        $ano = (int) ($this->input->get('ano') ?: date('Y'));
+        $data['ano'] = $ano;
+        $data['grupos_fiscais_nfce'] = $this->grupos_fiscais_nfce_model->ativos();
+        $data['produtos'] = $this->produtos_model->pendentes_classificacao_fiscal($ano);
+        $this->montaTela('loja/revisao_classificacao_fiscal', $data);
+    }
+
+    public function aprovar_classificacao_fiscal()
+    {
+        if (!check_habilidade('visualizar_produtos')) { show_error('Acesso negado.', 403); }
+        $selecionados = (array) $this->input->post('produtos');
+        $grupos_post = (array) $this->input->post('grupos');
+        $grupos_validos = array();
+        foreach ($this->grupos_fiscais_nfce_model->ativos() as $grupo) $grupos_validos[(int) $grupo->id] = true;
+        $vinculos = array();
+        foreach ($selecionados as $produto_id) {
+            $grupo_id = isset($grupos_post[$produto_id]) ? (int) $grupos_post[$produto_id] : 0;
+            if ($produto_id && isset($grupos_validos[$grupo_id])) $vinculos[(int) $produto_id] = $grupo_id;
+        }
+        if (!empty($vinculos)) $this->produtos_model->aprovar_grupos_fiscais($vinculos);
+        redirect('loja/revisar-classificacao-fiscal?ano='.(int)$this->input->post('ano').'&type=success&title=Classificacao+fiscal&message='.urlencode(count($vinculos).' produtos vinculados.'));
+    }
+
     public function salvar_custo()
     {
         $id = (int) $this->input->post('id');
@@ -68,6 +125,7 @@ class Loja_produtos extends TEC_Controller {
     function novo_produto(){
        $data['categorias'] = $this->produtos_model->get_categorias();
        $data['marcas'] = $this->produtos_model->get_marcas();
+       $data['grupos_fiscais_nfce'] = $this->grupos_fiscais_nfce_model->ativos();
 
        $data['produtos'] =  $this->produtos_model->get_produtos();
 
@@ -123,6 +181,12 @@ class Loja_produtos extends TEC_Controller {
                 'tamanhos' => $tamanho,
                 'valor_frete' => $this->input->post('valor_frete'),
                 'descricao' => $this->input->post('descricao'),
+                'nfce_ncm' => preg_replace('/\D/', '', (string) $this->input->post('nfce_ncm')) ?: null,
+                'nfce_csosn' => $this->input->post('nfce_csosn') ?: null,
+                'nfce_pis_cst' => $this->input->post('nfce_pis_cst') ?: null,
+                'nfce_cofins_cst' => $this->input->post('nfce_cofins_cst') ?: null,
+                'nfce_cfop' => preg_replace('/\D/', '', (string) $this->input->post('nfce_cfop')) ?: null,
+                'grupos_fiscais_nfce_id' => $this->input->post('grupos_fiscais_nfce_id') ?: null,
                 'detalhes' => $this->input->post('detalhes'),
                 'estoque' => $this->input->post('estoque'),
                 'comprimento_embalagem' => $this->input->post('comprimento_embalagem'),

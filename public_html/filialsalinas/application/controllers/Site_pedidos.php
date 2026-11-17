@@ -15,6 +15,8 @@ class Site_pedidos extends TEC_Controller {
     $this->load->helper('form');
     $this->load->helper('text');
 
+    ini_set('memory_limit', '-1'); 
+
     if($this->input->get('finalizados')){
             $this->set_menu_active(
             array(
@@ -176,6 +178,7 @@ function novo_pedido(){
 
   //dados usuario
   $data['usuario'] = $this->pedidos_model->get_info_usuario_logado();
+  $data['nfce_fluxo_habilitado'] = $this->nfce_fluxo_habilitado();
 
   // echo '<pre>';
   // print_r($data);
@@ -350,6 +353,14 @@ function salvar_pedido(){
 
 
   // $this->verifica_permissoes();
+  // A decisao e feita pelo caixa no modal do fechamento. A venda e' salva
+  // antes da emissao para que uma indisponibilidade fiscal nunca desfaça o
+  // pagamento registrado.
+  $nfce_emitir_solicitada = $this->input->post('emitir_nfce_agora') === '1';
+  $nfce_imprimir_solicitado = $this->input->post('imprimir_nfce_agora') === '1';
+  $nfce_autorizada = false;
+  $nfce_erro = null;
+
   if($this->input->post()){
 
     $produtos_post = $this->input->post('produto_collapse');
@@ -377,7 +388,8 @@ function salvar_pedido(){
     $tipo_desconto = $this->input->post('tipo_desconto');
     $valor_base = (float) str_replace(',', '.', $this->input->post('valor'));
     $valor_frete_val = (float) str_replace(',', '.', $this->input->post('valor_frete'));
-    $base_desconto = $valor_base + $valor_frete_val;
+    // O desconto incide SOMENTE sobre o valor dos produtos (o frete entra apos o desconto).
+    $base_desconto = $valor_base;
     $pedido_atual_desconto = null;
     $pedido_id = (int) $this->input->post('id');
     if($pedido_id){
@@ -401,8 +413,10 @@ function salvar_pedido(){
     $usuario_logado = $this->pedidos_model->get_info_usuario_logado();
     $desconto_maximo = (float) $usuario_logado->desconto_maximo;
     $desconto_maximo_valor = isset($usuario_logado->desconto_maximo_valor) ? (float) $usuario_logado->desconto_maximo_valor : 0;
-    $excedeu_pct = $desconto_maximo > 0 && $pct_aplicado > $desconto_maximo;
-    $excedeu_valor = $tipo_desconto == 'dinheiro' && $desconto_maximo_valor > 0 && $desconto_em_reais > $desconto_maximo_valor;
+    // Se o desconto for em %, valida apenas o limite em %.
+    // Se o desconto for em R$, valida apenas o limite em R$.
+    $excedeu_pct = ($tipo_desconto == 'porcentagem') && $desconto_maximo > 0 && $pct_aplicado > $desconto_maximo;
+    $excedeu_valor = ($tipo_desconto != 'porcentagem') && $desconto_maximo_valor > 0 && $desconto_em_reais > $desconto_maximo_valor;
 
     if(($excedeu_pct || $excedeu_valor) && !$desconto_inalterado){
       $autorizado = (isset($_SESSION['auth_desconto_autorizado']) && $_SESSION['auth_desconto_autorizado'] === true);
@@ -534,8 +548,10 @@ function salvar_pedido(){
     );
 
     //BILHETE
-    if(!empty($this->input->post('bilhete'))):
+    if(!empty($this->input->post('possui_bilhete')) && $this->input->post('possui_bilhete') == 1):
       $dados['bilhete'] = $this->input->post('bilhete');
+    else:
+      $dados['bilhete'] = '';
     endif;
 
     
@@ -684,6 +700,23 @@ if($id_pedido)
 
   $this->pedidos_model->salvar_contas_receber($receitas, $id_pedido);
 
+  // A NFC-e e' emitida somente depois que as contas foram persistidas, todas
+  // as parcelas estao pagas e o caixa confirmou a emissao no fechamento.
+  // Uma falha fiscal nunca desfaz a venda nem cria uma segunda nota.
+  $this->config->load('fiscal');
+  $fiscal = $this->config->item('fiscal');
+  if ($nfce_emitir_solicitada && !empty($fiscal['enabled'])
+      && ($fiscal['documento_padrao'] ?? null) === 'nfce') {
+    try {
+      $this->load->library('nfce_service');
+      $nota_emitida = $this->nfce_service->emitir_pedido($id_pedido);
+      $nfce_autorizada = $nota_emitida && $nota_emitida->status === 'autorizada';
+    } catch (Exception $e) {
+      log_message('error', 'NFC-e automatica do pedido #'.$id_pedido.': '.$e->getMessage());
+      $nfce_erro = $e->getMessage();
+    }
+  }
+
 
   /* SALVANDO NOVO ENDEREÇO DO CLIENTE CASO TENHA */
   if($this->input->post('endereco_cliente') == 'novo'):
@@ -728,22 +761,52 @@ else
   }
 }
 
-$this->lista();
-        $url = base_url(array('loja',  'pedidos'));
-        $this->output->append_output('<script>window.history.replaceState("", "Albedo", "'. $url .'")</script>');
+// echo 'salvo';
+// exit;
 
-        echo ''
+// $this->lista();
+//         $url = base_url(array('loja',  'pedidos'));
+//         $this->output->append_output('<script>window.history.replaceState("", "Albedo", "'. $url .'")</script>');
 
-                . '<script>'
+//         echo ''
 
-                . 'if (confirm("IMPRIMIR PEDIDO?")){'
+//                 . '<script>'
 
-                . 'window.open("' . base_url() . 'loja/imprimir?print=1&id=' . $id_return . '","_blank")'
+//                 . 'if (confirm("IMPRIMIR PEDIDO?")){'
 
-                . '}</script>';
+//                 . 'window.open("' . base_url() . 'loja/imprimir?print=1&id=' . $id_return . '","_blank")'
 
-  // redirect('loja/pedidos');
+//                 . '}</script>';
 
+  if ($nfce_autorizada && $nfce_imprimir_solicitado) {
+    // A pagina de impressao usa window.print(), exatamente como o recibo do
+    // pedido. O navegador, portanto, envia para a mesma impressora padrao.
+    redirect('loja/nfce/imprimir?pedido='.$id_pedido.'&retornar=1');
+    return;
+  }
+
+  if ($nfce_erro !== null) {
+    redirect('loja/pedidos?type=warning&title=NFC-e&message='.urlencode('Pedido salvo, mas o cupom nao foi emitido: '.$nfce_erro));
+    return;
+  }
+
+  if ($nfce_autorizada) {
+    redirect('loja/pedidos?type=success&title=Pedido&message='.urlencode('Pedido salvo e NFC-e autorizada.'));
+    return;
+  }
+
+  // Salinas mantem o fluxo original: volta para a lista e pergunta se deve
+  // imprimir o pedido.
+  $this->lista();
+  $url = base_url(array('loja',  'pedidos'));
+  $this->output->append_output('<script>window.history.replaceState("", "Albedo", "'. $url .'")</script>');
+  echo ''
+    . '<script>'
+    . 'if (confirm("IMPRIMIR PEDIDO?")){'
+    . 'window.open("' . base_url() . 'loja/imprimir?print=1&id=' . $id_return . '","_blank")'
+    . '}</script>';
+
+        
 }
 }
 
@@ -877,6 +940,9 @@ $this->orcamento();
 $url = base_url(array('loja',  'pedidos-orcamento'));
 
 $this->output->append_output('<script>window.history.replaceState("", "Albedo", "'. $url .'")</script>');
+if ($nfce_imprimir_url) {
+  $this->output->append_output('<script>window.open('.json_encode($nfce_imprimir_url).', "_blank");</script>');
+}
 }
 }
 
@@ -935,6 +1001,7 @@ public function editar_pedido()
 
     //dados usuario
     $dados['usuario'] = $this->pedidos_model->get_info_usuario_logado();
+    $dados['nfce_fluxo_habilitado'] = $this->nfce_fluxo_habilitado();
     
 
 
@@ -952,6 +1019,14 @@ public function editar_pedido()
 
 
 
+}
+
+/** Indica para a tela se a emissao interativa de NFC-e pode ser oferecida. */
+private function nfce_fluxo_habilitado()
+{
+  $this->config->load('fiscal');
+  $fiscal = $this->config->item('fiscal');
+  return !empty($fiscal['enabled']) && (($fiscal['documento_padrao'] ?? null) === 'nfce');
 }
 
 function excluir_pedido(){

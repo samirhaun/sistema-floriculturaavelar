@@ -56,31 +56,48 @@ class Pedidos_model extends CI_Model {
         }
     }
 
+
     public function check_pedido_duplicado($clientes_id, $valor_total, $minutos = 5)
     {
-        $this->db->where('clientes_id', $clientes_id)->where('valor_total', $valor_total);
-        $this->db->where('data_pedido >=', date('Y-m-d H:i:s', strtotime('-'.(int) $minutos.' minutes')));
-        $this->db->where('origem', 1)->where_in('status_pedido', array(0, 1, 5));
-        return $this->db->get('pedidos')->num_rows() > 0;
+        $this->db->where('clientes_id', $clientes_id);
+        $this->db->where('valor_total', $valor_total);
+        $this->db->where('data_pedido >=', date('Y-m-d H:i:s', strtotime('-' . (int)$minutos . ' minutes')));
+        $this->db->where('origem', 1);
+        $this->db->where_in('status_pedido', array(0, 1, 5));
+        $query = $this->db->get('pedidos');
+        return $query->num_rows() > 0;
     }
 
+    /**
+     * Faz a verificacao e a inclusao sob o mesmo bloqueio no MySQL.
+     * Assim duas requisicoes simultaneas do mesmo cliente/valor nao passam
+     * juntas pelo intervalo existente entre o SELECT e o INSERT.
+     */
     public function salvar_pedido_sem_duplicar($dados, $minutos = 5)
     {
         $cliente_id = isset($dados['clientes_id']) ? (int) $dados['clientes_id'] : 0;
         $valor_total = isset($dados['valor_total']) ? number_format((float) $dados['valor_total'], 2, '.', '') : '0.00';
         $nome_lock = 'pedido_'.sha1($cliente_id.'|'.$valor_total);
         $lock = $this->db->query('SELECT GET_LOCK(?, 10) AS adquirido', array($nome_lock))->row();
-        if (!$lock || (int) $lock->adquirido !== 1) return array('id' => null, 'duplicado' => false, 'erro' => true);
+
+        if (!$lock || (int) $lock->adquirido !== 1) {
+            return array('id' => null, 'duplicado' => false, 'erro' => true);
+        }
 
         try {
-            if ($this->check_pedido_duplicado($cliente_id, $valor_total, $minutos)) return array('id' => null, 'duplicado' => true, 'erro' => false);
-            if (!$this->db->insert('pedidos', $dados)) return array('id' => null, 'duplicado' => false, 'erro' => true);
+            if ($this->check_pedido_duplicado($cliente_id, $valor_total, $minutos)) {
+                return array('id' => null, 'duplicado' => true, 'erro' => false);
+            }
+
+            if (!$this->db->insert('pedidos', $dados)) {
+                return array('id' => null, 'duplicado' => false, 'erro' => true);
+            }
+
             return array('id' => $this->db->insert_id(), 'duplicado' => false, 'erro' => false);
         } finally {
             $this->db->query('SELECT RELEASE_LOCK(?)', array($nome_lock));
         }
     }
-
 
 
     public function get_pedidos_andamento($id=NULL)
@@ -285,15 +302,25 @@ $taxa_conta_id = $this->criar_conta_taxa_maquininha($receita, $conta_receber_id,
             $receita['bandeira_cartao'] = $this->taxas_cartao_model->normalizar_bandeira($receita['bandeira_cartao']);
             return $receita;
         }
+
         if(empty($receita['maquininha_taxa_id'])){
             $receita['bandeira_cartao'] = null;
             return $receita;
         }
-        $grupo = $this->db->select('grupo_bandeira, bandeiras')->from('maquininhas_cartao_taxas')->where('id', $receita['maquininha_taxa_id'])->get()->row();
+
+        $grupo = $this->db->select('grupo_bandeira, bandeiras')
+            ->from('maquininhas_cartao_taxas')
+            ->where('id', $receita['maquininha_taxa_id'])
+            ->get()->row();
+
         $bandeira = $grupo ? trim((string) $grupo->bandeiras) : '';
         $opcoes = preg_split('/[,;\/]+/', $bandeira, -1, PREG_SPLIT_NO_EMPTY);
-        if(count($opcoes) === 1) $bandeira = trim($opcoes[0]);
-        elseif($grupo) $bandeira = trim((string) $grupo->grupo_bandeira);
+        if(count($opcoes) === 1){
+            $bandeira = trim($opcoes[0]);
+        }elseif($grupo){
+            $bandeira = trim((string) $grupo->grupo_bandeira);
+        }
+
         $receita['bandeira_cartao'] = $bandeira ? $this->taxas_cartao_model->normalizar_bandeira($bandeira) : null;
         return $receita;
     }
@@ -385,9 +412,10 @@ private function campo_taxa_maquininha($forma_pgto)
     public function get_contas_receber_pedidos($pedido_id)
     {
 
-            $this->db->select('*');
+            $this->db->select('contas_receber.*, contas_pagar.id as taxa_conta_pagar_id, contas_pagar.valor as taxa_valor, contas_pagar.status as taxa_status, contas_pagar.descricao as taxa_descricao, contas_pagar.data_vencimento as taxa_data_vencimento, contas_pagar.data_pago as taxa_data_pago');
             $this->db->from('contas_receber');
-            $this->db->where('pedidos_id', $pedido_id);
+            $this->db->join('contas_pagar', 'contas_pagar.contas_receber_id = contas_receber.id AND contas_pagar.origem = "taxa_maquininha"', 'left');
+            $this->db->where('contas_receber.pedidos_id', $pedido_id);
             return $this->db->get()->result();
 
     }
