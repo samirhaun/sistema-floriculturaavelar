@@ -1,0 +1,6 @@
+Snapshot antes da 023 (MOC) e 008 (Salinas)
+Criado em: 2026-11-17T14:56:29
+
+montes_claros-produtos (24 ids da 023): 24
+salinas-produtos: 455
+salinas-habilidades: 70

@@ -149,6 +149,18 @@ class Nfce_service {
                 'icms_origem' => '0', 'icms_situacao_tributaria' => $regra['csosn'],
                 'pis_situacao_tributaria' => $regra['pis'], 'cofins_situacao_tributaria' => $regra['cofins'],
             );
+            // CST 49/99 (outras operacoes) usam o grupo PISOutr/COFINSOutr, que
+            // exige base, aliquota e valor. No Simples Nacional sao zerados.
+            if (in_array($regra['pis'], array('49', '99'), true)) {
+                $item_payload['pis_base_calculo'] = '0.00';
+                $item_payload['pis_aliquota_porcentual'] = '0.00';
+                $item_payload['pis_valor'] = '0.00';
+            }
+            if (in_array($regra['cofins'], array('49', '99'), true)) {
+                $item_payload['cofins_base_calculo'] = '0.00';
+                $item_payload['cofins_aliquota_porcentual'] = '0.00';
+                $item_payload['cofins_valor'] = '0.00';
+            }
             if ($rateio_frete[$indice] > 0) $item_payload['valor_frete'] = number_format($rateio_frete[$indice], 2, '.', '');
             if ($rateio_desconto[$indice] > 0) $item_payload['valor_desconto'] = number_format($rateio_desconto[$indice], 2, '.', '');
             $itens_payload[] = $item_payload;

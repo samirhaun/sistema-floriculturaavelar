@@ -1,0 +1,70 @@
+{"id": 1, "nome_unico": "visualizar_pedidos", "descricao": "Visualizar Pedidos"}
+{"id": 2, "nome_unico": "criar_pedidos", "descricao": "Criar Pedidos"}
+{"id": 3, "nome_unico": "editar_pedidos", "descricao": "Editar Pedidos"}
+{"id": 4, "nome_unico": "atualizar_status_pedidos", "descricao": "Atualizar Pedidos"}
+{"id": 5, "nome_unico": "visualizar_cupons", "descricao": "Visualizar Cupons"}
+{"id": 6, "nome_unico": "criar_cupons", "descricao": "Criar Cupons"}
+{"id": 7, "nome_unico": "editar_cupons", "descricao": "Editar Cupons"}
+{"id": 8, "nome_unico": "excluir_cupons", "descricao": "Excluir Cupons"}
+{"id": 9, "nome_unico": "visualizar_plano_contas", "descricao": "Visualizar Plano de Contas"}
+{"id": 10, "nome_unico": "criar_plano_contas", "descricao": "Criar Plano de Contas"}
+{"id": 11, "nome_unico": "editar_plano_contas", "descricao": "Editar Plano de Contas"}
+{"id": 12, "nome_unico": "excluir_plano_contas", "descricao": "Excluir Plano de Contas"}
+{"id": 13, "nome_unico": "visualizar_fornecedores", "descricao": "Visualizar Fornecedores"}
+{"id": 14, "nome_unico": "criar_fornecedores", "descricao": "Criar Fornecedores"}
+{"id": 15, "nome_unico": "editar_fornecedores", "descricao": "Editar Fornecedores"}
+{"id": 16, "nome_unico": "excluir_fornecedores", "descricao": "Excluir Fornecedores"}
+{"id": 17, "nome_unico": "visualizar_contas_pagar", "descricao": "Visualizar Contas a Pagar"}
+{"id": 18, "nome_unico": "criar_contas_pagar", "descricao": "Criar Contas a Pagar"}
+{"id": 19, "nome_unico": "editar_contas_pagar", "descricao": "Editar Contas a Pagar"}
+{"id": 20, "nome_unico": "excluir_contas_pagar", "descricao": "Excluir Contas a Pagar"}
+{"id": 21, "nome_unico": "visualizar_produtos", "descricao": "Visualizar Produtos"}
+{"id": 22, "nome_unico": "criar_produtos", "descricao": "Criar Produtos"}
+{"id": 23, "nome_unico": "editar_produtos", "descricao": "Editar Produtos"}
+{"id": 24, "nome_unico": "excluir_produtos", "descricao": "Excluir Produtos"}
+{"id": 25, "nome_unico": "visualizar_entrada_produtos", "descricao": "Visualizar Entrada de Produtos"}
+{"id": 26, "nome_unico": "criar_entrada_produtos", "descricao": "Criar  Entrada de Produtos"}
+{"id": 27, "nome_unico": "editar_entrada_produtos", "descricao": "Editar  Entrada de Produtos"}
+{"id": 28, "nome_unico": "excluir_entrada_produtos", "descricao": "Excluir Entrada de Produtos"}
+{"id": 29, "nome_unico": "visualizar_saida_baixa_produtos", "descricao": "Visualizar Saída/Baixa de Produtos"}
+{"id": 30, "nome_unico": "criar_saida_baixa_produtos", "descricao": "Criar Saída/Baixa de Produtos"}
+{"id": 31, "nome_unico": "editar_saida_baixa_produtos", "descricao": "Editar Saída/Baixa de Produtos"}
+{"id": 32, "nome_unico": "excluir_saida_baixa_produtos", "descricao": "Excluir Saída/Baixa de Produtos"}
+{"id": 33, "nome_unico": "visualizar_usuarios", "descricao": "Visualizar Usuários"}
+{"id": 34, "nome_unico": "criar_usuarios", "descricao": "Criar Usuários"}
+{"id": 35, "nome_unico": "editar_usuarios", "descricao": "Editar Usuários"}
+{"id": 36, "nome_unico": "excluir_usuarios", "descricao": "Excluir Usuários"}
+{"id": 37, "nome_unico": "habilidades_usuarios", "descricao": "Habilidades de Usuários"}
+{"id": 38, "nome_unico": "visualizar_clientes", "descricao": "Visualizar Clientes"}
+{"id": 39, "nome_unico": "criar_clientes", "descricao": "Criar Clientes"}
+{"id": 40, "nome_unico": "editar_clientes", "descricao": "Editar Clientes"}
+{"id": 41, "nome_unico": "excluir_clientes", "descricao": "Excluir Clientes"}
+{"id": 42, "nome_unico": "visualizar_vendedores", "descricao": "Visualizar Vendedores"}
+{"id": 43, "nome_unico": "criar_vendedores", "descricao": "Criar Vendedores"}
+{"id": 44, "nome_unico": "editar_vendedores", "descricao": "Editar Vendedores"}
+{"id": 45, "nome_unico": "excluir_vendedores", "descricao": "Excluir Vendedores"}
+{"id": 46, "nome_unico": "visualizar_eventos", "descricao": "Visualizar Eventos"}
+{"id": 47, "nome_unico": "criar_eventos", "descricao": "Criar  Eventos"}
+{"id": 48, "nome_unico": "editar_eventos", "descricao": "Editar Eventos"}
+{"id": 49, "nome_unico": "excluir_eventos", "descricao": "Excluir Eventos"}
+{"id": 50, "nome_unico": "visualizar_tipos_flores", "descricao": "Visualizar Tipos de Flores"}
+{"id": 51, "nome_unico": "criar_tipos_flores", "descricao": "Criar Tipos de Flores"}
+{"id": 52, "nome_unico": "editar_tipos_flores", "descricao": "Editar Tipos de Flores"}
+{"id": 53, "nome_unico": "excluir_tipos_flores", "descricao": "Excluir Tipos de Flores"}
+{"id": 54, "nome_unico": "visualizar_grupos_categoria", "descricao": "Visualizar Grupos de Categoria"}
+{"id": 55, "nome_unico": "criar_grupos_categoria", "descricao": "Criar Grupos de Categoria"}
+{"id": 56, "nome_unico": "editar_grupos_categoria", "descricao": "Editar Grupos de Categoria"}
+{"id": 57, "nome_unico": "excluir_grupos_categoria", "descricao": "Excluir Grupos de Categoria"}
+{"id": 58, "nome_unico": "visualizar_categorias", "descricao": "Visualizar Categorias"}
+{"id": 59, "nome_unico": "criar_categorias", "descricao": "Criar Categorias"}
+{"id": 60, "nome_unico": "editar_categorias", "descricao": "Editar Categorias"}
+{"id": 61, "nome_unico": "excluir_categorias", "descricao": "Excluir Categorias"}
+{"id": 62, "nome_unico": "relatorios_fluxo_caixa_pedidos", "descricao": "Relatório de Fluxo de Caixa/Pedidos"}
+{"id": 63, "nome_unico": "relatorios_posicao_estoque", "descricao": "Relatório de Posição de Estoque"}
+{"id": 64, "nome_unico": "relatorios_estoque_minimo", "descricao": "Relatório de Estoque Mínimo"}
+{"id": 65, "nome_unico": "dados_site", "descricao": "Atualizar dados do Site"}
+{"id": 66, "nome_unico": "visualizar_entregadores", "descricao": "Visualizar Entregadores"}
+{"id": 67, "nome_unico": "criar_entregadores", "descricao": "Criar Entregadores"}
+{"id": 68, "nome_unico": "editar_entregadores", "descricao": "Editar Entregadores"}
+{"id": 69, "nome_unico": "excluir_entregadores", "descricao": "Excluir Entregadores"}
+{"id": 70, "nome_unico": "visualizar_fretes", "descricao": "Visualizar Fretes"}
