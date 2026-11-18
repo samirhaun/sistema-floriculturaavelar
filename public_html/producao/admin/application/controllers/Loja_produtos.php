@@ -370,6 +370,7 @@ class Loja_produtos extends TEC_Controller {
             $dados['marcas'] = $this->produtos_model->get_marcas();
             $dados['produto'] = $this->produtos_model->get_produto($this->input->get('id'));
             $dados['tamanhos'] = $this->produtos_model->get_tamanhos();
+            $dados['grupos_fiscais_nfce'] = $this->grupos_fiscais_nfce_model->ativos();
 
 
             $dados['produtos'] =  $this->produtos_model->get_produtos();
