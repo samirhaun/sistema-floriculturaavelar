@@ -599,7 +599,7 @@ class Pedidos_model extends CI_Model {
         // print_r($situacaopgto);
         // exit;
 
-        $this->db->select('contas_receber.data_vencimento as vencimento_receita, contas_receber.valor as valor_receita, contas_receber.status as status_receita,contas_receber.data_pago as data_pago_receita,contas_receber.forma_pgto as forma_pgto_receita');
+        $this->db->select('contas_receber.data_vencimento as vencimento_receita, contas_receber.valor as valor_receita, contas_receber.status as status_receita,contas_receber.data_pago as data_pago_receita,contas_receber.data_liquidacao as data_liquidacao_receita,contas_receber.forma_pgto as forma_pgto_receita');
         $this->db->select('CASE WHEN pedidos.status_pedido IN (4, 5) THEN 1 ELSE 0 END as cancelada_relatorio', false);
         $this->db->select('pedidos.*, "pedido" as tipo_credito');
         $this->db->select('clientes.nome as cliente_pedido, clientes.telefone as cliente_telefone,  clientes.email as cliente_email');
@@ -778,7 +778,7 @@ class Pedidos_model extends CI_Model {
     }
 
     function get_demonstrativo_novo_paginated($inicio, $fim, $origem, $vendedor, $dtreferencia, $situacaopgto, $entregador, $formapgto, $limit, $offset){
-        $this->db->select('contas_receber.id, contas_receber.data_vencimento as vencimento_receita, contas_receber.valor as valor_receita, contas_receber.status as status_receita,contas_receber.data_pago as data_pago_receita,contas_receber.forma_pgto as forma_pgto_receita');
+        $this->db->select('contas_receber.id, contas_receber.data_vencimento as vencimento_receita, contas_receber.valor as valor_receita, contas_receber.status as status_receita,contas_receber.data_pago as data_pago_receita,contas_receber.data_liquidacao as data_liquidacao_receita,contas_receber.forma_pgto as forma_pgto_receita');
         $this->db->select('CASE WHEN pedidos.status_pedido IN (4, 5) THEN 1 ELSE 0 END as cancelada_relatorio', false);
         $this->db->select('pedidos.*, "pedido" as tipo_credito');
         $this->db->select('clientes.nome as cliente_pedido, clientes.telefone as cliente_telefone, clientes.email as cliente_email');

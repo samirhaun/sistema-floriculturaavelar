@@ -608,7 +608,7 @@
                                     <?php endif; ?>
                                     <div class="table-responsive">
                                     <table class="table table-striped table-bordered tabela-fluxo">
-                                        <thead><tr><th>Código</th><th>Cliente</th><th>Categoria</th><th>Subcategoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Data Pago</th><th>Forma Pgto</th></tr></thead>
+                                        <thead><tr><th>Código</th><th>Cliente</th><th>Categoria</th><th>Subcategoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Data Pago</th><th>Liquidação</th><th>Forma Pgto</th></tr></thead>
                                         <tbody>
                                             <?php if(!empty($pedidos_pag)): foreach($pedidos_pag as $r): ?>
                                             <?php $cancelada_relatorio = !empty($r->cancelada_relatorio); ?>
@@ -621,10 +621,12 @@
                                                 <td>R$ <?php echo number_format($r->valor_receita, 2, ',', '.'); ?><?php echo $cancelada_relatorio ? ' <span class="badge badge-cancelada">fora dos totais</span>' : ''; ?></td>
                                                 <td><?php echo $cancelada_relatorio ? '<span class="badge badge-cancelada">Cancelada</span>' : (($r->status_receita == 0) ? '<span class="badge badge-aberto">Em aberto</span>' : '<span class="badge badge-pago">Pago</span>'); ?></td>
                                                 <td><?php echo ($r->data_pago_receita) ? date("d/m/Y", strtotime($r->data_pago_receita)) : '-'; ?></td>
+                                                <?php $liquidacao_receita = !empty($r->data_liquidacao_receita) ? $r->data_liquidacao_receita : (($r->status_receita == 1 && !empty($r->data_pago_receita)) ? $r->data_pago_receita : null); ?>
+                                                <td><?php echo $liquidacao_receita ? date("d/m/Y", strtotime($liquidacao_receita)) : '-'; ?></td>
                                                 <td><?php echo isset($nomes_forma_pgto[$r->forma_pgto_receita]) ? $nomes_forma_pgto[$r->forma_pgto_receita] : '-'; ?></td>
                                             </tr>
                                             <?php endforeach; else: ?>
-                                            <tr><td colspan="9" class="text-center text-muted">Nenhuma receita</td></tr>
+                                            <tr><td colspan="10" class="text-center text-muted">Nenhuma receita</td></tr>
                                             <?php endif; ?>
                                         </tbody>
                                     </table>
