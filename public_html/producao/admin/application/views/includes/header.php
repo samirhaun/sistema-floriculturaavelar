@@ -343,6 +343,10 @@
                             <?php endif; ?>
                         
                             <?php if(check_habilidade('relatorios_fluxo_caixa_pedidos')): ?>
+                            <li id="loja-conciliacao"><a href="<?php echo base_url(array('loja', 'conciliacao-bancaria')) ?>">Conciliação bancária</a></li>
+                            <?php endif; ?>
+
+                            <?php if(check_habilidade('relatorios_fluxo_caixa_pedidos')): ?>
                             <li id="loja-demonstrativo"><a href="<?php echo base_url(array('loja', 'demonstrativo')) ?>">Pedidos</a></li>
                             <?php endif; ?>
 

@@ -378,6 +378,8 @@ $route['finalizar-pedido']                           = "Loja_pedidos/finalizar_p
 $route['loja/demonstrativo']                               = "Loja_demonstrativo/demonstrativo";
 $route['loja/buscar-pedidos-relatorios']                   = "Loja_demonstrativo/demonstrativo_buscar";
 
+$route['loja/conciliacao-bancaria']                     = "Loja_conciliacao/index";
+$route['loja/conciliacao-bancaria/importar']            = "Loja_conciliacao/importar";
 $route['loja/demonstrativo-novo']                          = "Loja_demonstrativo/demonstrativo_novo";
 $route['loja/buscar-pedidos-relatorios-novo']                   = "Loja_demonstrativo/demonstrativo_buscar_novo";
 $route['loja/exportar-contas-pagar-relatorio-novo']             = "Loja_demonstrativo/exportar_contas_pagar_novo";
